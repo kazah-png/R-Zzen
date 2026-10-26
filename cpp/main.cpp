@@ -12,6 +12,8 @@ using namespace zzen;
 namespace fs=std::filesystem;
 HWND mainWindow,statusLabel,startButton,stopButton,analyzeButton;
 std::atomic<bool> running=false,exiting=false,diagnostic=false;
+std::atomic<bool> starting=false;
+HWND startTarget=nullptr;double startDeadline=0;
 std::atomic<unsigned> generation=0;
 std::thread worker;std::mutex statusMutex,logMutex;std::wstring statusText=L"Ready when you are. Open Roblox, then start a session.";
 fs::path folder;HFONT font;HICON appIcon;
@@ -21,8 +23,30 @@ SessionView sessionView;
 double now(){return GetTickCount64()/1000.;}
 void log(const std::wstring&message){std::lock_guard<std::mutex> guard(logMutex);std::error_code ec;auto logfile=folder/L"sesion-cpp.log";if(fs::exists(logfile,ec)&&fs::file_size(logfile,ec)>5*1024*1024){auto previous=folder/L"sesion-previous.log";fs::remove(previous,ec);fs::rename(logfile,previous,ec);}SYSTEMTIME t;GetLocalTime(&t);char stamp[40];sprintf_s(stamp,"%04u-%02u-%02u %02u:%02u:%02u ",t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute,t.wSecond);std::ofstream out(folder/L"sesion-cpp.log",std::ios::app);out<<stamp<<utf8(message)<<"\n";}
 void status(const std::wstring&m,bool record=true){{std::lock_guard<std::mutex> lock(statusMutex);statusText=m;}PostMessageW(mainWindow,WM_APP,0,0);if(record)log(m);}
-void stop(const std::wstring&m){running=false;diagnostic=false;generation++;{std::lock_guard<std::mutex>lock(statusMutex);sessionView.ended=now();}status(m);}
-HWND focused(){HWND h=GetForegroundWindow();DWORD id=0;GetWindowThreadProcessId(h,&id);HANDLE p=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,id);if(!p)return nullptr;wchar_t name[32768];DWORD n=32768;bool ok=QueryFullProcessImageNameW(p,0,name,&n)!=0;CloseHandle(p);return ok&&_wcsicmp(fs::path(name).filename().c_str(),L"RobloxPlayerBeta.exe")==0?h:nullptr;}
+void stop(const std::wstring&m){starting=false;running=false;diagnostic=false;generation++;{std::lock_guard<std::mutex>lock(statusMutex);sessionView.ended=now();}status(m);}
+bool isRoblox(HWND h){
+ if(!h||!IsWindow(h))return false;DWORD id=0;GetWindowThreadProcessId(h,&id);
+ HANDLE p=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,id);if(!p)return false;
+ wchar_t name[32768];DWORD n=32768;bool ok=QueryFullProcessImageNameW(p,0,name,&n)!=0;CloseHandle(p);
+ return ok&&_wcsicmp(fs::path(name).filename().c_str(),L"RobloxPlayerBeta.exe")==0;
+}
+HWND focused(){auto h=GetForegroundWindow();return isRoblox(h)?h:nullptr;}
+BOOL CALLBACK collectRobloxWindows(HWND h,LPARAM context){
+ if(IsWindowVisible(h)&&!GetWindow(h,GW_OWNER)&&!(GetWindowLongPtrW(h,GWL_EXSTYLE)&WS_EX_TOOLWINDOW)&&isRoblox(h))
+  reinterpret_cast<std::vector<HWND>*>(context)->push_back(h);
+ return TRUE;
+}
+// Called only in response to an explicit Start/F8 action, never from the worker.
+HWND findRoblox(){
+ std::vector<HWND> games;EnumWindows(collectRobloxWindows,reinterpret_cast<LPARAM>(&games));
+ HWND target=focused();
+ if(!target){
+  if(games.empty()){status(L"Open Roblox before starting. No game window was found.");return nullptr;}
+  if(games.size()!=1){status(L"Several Roblox windows are open. Select the game, then press F8.");return nullptr;}
+  target=games.front();
+ }
+ return target;
+}
 Rect bounds(HWND h){RECT r{};POINT p{};if(!GetClientRect(h,&r)||!ClientToScreen(h,&p))throw std::runtime_error("Game window is unavailable");return {p.x,p.y,r.right,r.bottom};}
 bool same(Rect a,Rect b){return a.x==b.x&&a.y==b.y&&a.w==b.w&&a.h==b.h;}
 bool userInput(){for(int key:{VK_LBUTTON,VK_RBUTTON,VK_SPACE,VK_SHIFT,VK_CONTROL,VK_MENU,VK_LWIN,VK_RWIN})if(GetAsyncKeyState(key)&0x8000)return true;return false;}
@@ -90,7 +114,34 @@ void loop(bool tycoon,bool promote,bool onlyDiagnostic,unsigned gen){
  }catch(const winrt::hresult_error&e){log(L"OCR/Windows detail: "+std::wstring(e.message()));stop(L"Windows text recognition failed. Use Open logs for details.");}catch(const std::exception&e){stop(L"Error: "+std::wstring(winrt::to_hstring(e.what())));}
  running=false;PostMessageW(mainWindow,WM_APP,0,0);
 }
-void begin(bool diag){if(running||!hotkeyReady)return;if(worker.joinable())worker.join();{std::lock_guard<std::mutex>lock(statusMutex);sessionView={};sessionView.started=now();}running=true;diagnostic=diag;unsigned gen=++generation;log(L"SESSION Zzen 0.1 | native x64 | unified autopilot | diagnostic="+std::to_wstring(diag));status(diag?L"Diagnostic in 5 seconds. Switch to Roblox.":L"Session started. Switch to Roblox. Press F8 to stop.");worker=std::thread(loop,true,true,diag,gen);}
+void begin(bool diag){if(running||!hotkeyReady)return;if(worker.joinable())worker.join();{std::lock_guard<std::mutex>lock(statusMutex);sessionView={};sessionView.started=now();}running=true;diagnostic=diag;unsigned gen=++generation;log(L"SESSION Zzen 0.1 | native x64 | unified autopilot | diagnostic="+std::to_wstring(diag));status(diag?L"Diagnostic in 5 seconds. Switch to Roblox.":L"Session started. Press F8 to stop.");worker=std::thread(loop,true,true,diag,gen);}
+void checkStart(){
+ if(!starting){KillTimer(mainWindow,2);return;}
+ // Activation across UI threads is asynchronous. Observe it without stealing focus again.
+ if(focused()==startTarget){
+  starting=false;KillTimer(mainWindow,2);
+  log(L"Roblox activated; Zzen minimized by explicit Start/F8 action.");begin(false);return;
+ }
+ if(now()>=startDeadline||!isRoblox(startTarget)){
+  starting=false;KillTimer(mainWindow,2);
+  ShowWindow(mainWindow,SW_SHOWNOACTIVATE);
+  status(L"Could not activate Roblox. Select the game and press F8 again.");
+ }
+}
+void startSession(){
+ if(running||starting||!hotkeyReady)return;
+ auto target=findRoblox();if(!target)return;
+ startTarget=target;startDeadline=now()+1.5;starting=true;
+ if(!SetTimer(mainWindow,2,100,nullptr)){starting=false;status(L"Could not start the activation timer. Please reopen Zzen.");return;}
+ status(L"Bringing Roblox forward...");
+ ShowWindow(mainWindow,SW_MINIMIZE);
+ if(IsIconic(target))ShowWindow(target,SW_RESTORE);
+ SetForegroundWindow(target);
+}
+void toggleSession(){
+ if(running||starting)stop(L"Stopped with F8. Press F8 to start again.");
+ else startSession();
+}
 void exportLog(){
  try{std::wstring message;SessionView view;{std::lock_guard<std::mutex>guard(statusMutex);message=statusText;view=sessionView;}
   auto dir=folder/L"feedback";fs::create_directories(dir);SYSTEMTIME t;GetLocalTime(&t);wchar_t name[100];swprintf_s(name,L"Zzen-feedback-%04u%02u%02u-%02u%02u%02u-%03u.txt",t.wYear,t.wMonth,t.wDay,t.wHour,t.wMinute,t.wSecond,t.wMilliseconds);auto path=dir/name;

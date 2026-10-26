@@ -4,7 +4,7 @@
 
 **Zzen v0.1** is a native C++ Windows desktop app for visual automation in Roblox **Army Commander Tycoon**. One session combines anti-AFK, construction purchases and automatic prestige, then resumes building after verifying the promotion count.
 
-[Download v0.1](https://github.com/kazah-png/R-Zzen/releases/tag/v0.1-menu-fix) · [English user guide](output/pdf/Zzen-v0.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
+[Download v0.1](https://github.com/kazah-png/R-Zzen/releases/tag/v0.1-f8-toggle) · [English user guide](output/pdf/Zzen-v0.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
 
 ## License and independence
 
@@ -17,8 +17,8 @@ R-Zzen is **not affiliated with, sponsored by, endorsed by, or an official produ
 1. Download and extract `Zzen-0.1-Windows-x64.zip` from Releases.
 2. Open the tycoon and set the **game language to Spanish**. The guide explains how; Zzen's own interface is in English.
 3. Close older Zzen copies and launch `Zzen.exe`.
-4. Click **Start session**, switch to Roblox and keep its toolbar visible. The tested resolution is **1920 × 1080**.
-5. Watch the subtle status strip at the top of the screen. Press **F8** to stop before taking manual control.
+4. Press **F8** or click **Start session**. Zzen minimizes and brings Roblox forward; keep its toolbar visible. The tested resolution is **1920 × 1080**.
+5. Watch the subtle status strip at the top of the screen. Press **F8** to stop before taking manual control; press it again to start, even with Zzen minimized.
 
 Starting a session includes automatic promotion, which resets your base and in-game cash. Zzen pauses input when Roblox loses focus and resumes when you return. Keep the computer awake and unlocked.
 

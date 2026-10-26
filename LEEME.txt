@@ -11,7 +11,9 @@ The previous zzen-antiafk.exe is a legacy C# build and is not this release.
 
 Start session enables the complete cycle: anti-AFK, building upgrades and automatic prestige.
 Use Roblox with the game UI in Spanish. Keep Roblox visible and in the foreground.
-F8 or Stop immediately stops automation. Switching apps pauses inputs.
+F8 starts or stops the session, including while Zzen is minimized.
+Starting with F8 or Start session minimizes Zzen and brings Roblox forward.
+Stop also ends automation. Switching apps pauses inputs.
 Prestige resets the base and in-game cash; Zzen checks the new promotion count before buying again.
 
 Export log creates feedback/Zzen-feedback-DATE-TIME.txt.

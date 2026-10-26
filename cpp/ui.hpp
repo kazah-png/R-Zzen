@@ -18,9 +18,9 @@ void paint(HDC dc){
  text(dc,L"YOUR AUTOMATION HUB",25,110,170,22,10,RGB(139,159,181),true);
  round(dc,16,150,178,45,RGB(26,44,62),RGB(26,44,62),9);dot(dc,34,173,4,RGB(58,223,188));text(dc,L"Overview",50,161,130,24,15,white,true);
  text(dc,L"CURRENT PROFILE",25,228,165,20,10,RGB(139,159,181),true);text(dc,L"Army Commander\nTycoon",25,258,165,58,18,white,true);text(dc,L"Roblox · Spanish game UI",25,322,160,38,12,RGB(159,179,199));
- round(dc,20,541,170,85,RGB(23,38,55),RGB(37,54,72),10);round(dc,34,556,35,26,RGB(43,60,79),RGB(43,60,79),5);text(dc,L"F8",34,559,35,20,12,white,true,DT_CENTER);text(dc,L"Stop anytime",78,559,102,20,12,white,true);text(dc,L"Instantly stops all inputs.",34,594,145,20,11,RGB(163,181,200));
+ round(dc,20,541,170,85,RGB(23,38,55),RGB(37,54,72),10);round(dc,34,556,35,26,RGB(43,60,79),RGB(43,60,79),5);text(dc,L"F8",34,559,35,20,12,white,true,DT_CENTER);text(dc,L"Start / stop",78,559,102,20,12,white,true);text(dc,L"Shows Roblox on start.",34,594,145,20,11,RGB(163,181,200));
  text(dc,L"v0.1  ·  Windows desktop",25,679,165,20,11,RGB(121,145,168));
- text(dc,L"AUTOMATION",246,31,500,20,11,accent,true);text(dc,L"Your session, under control.",246,58,700,45,28,ink,true);text(dc,L"Start Zzen, switch to Roblox, and let your base grow.",246,105,738,22,14,muted);
+ text(dc,L"AUTOMATION",246,31,500,20,11,accent,true);text(dc,L"Your session, under control.",246,58,700,45,28,ink,true);text(dc,L"Press F8 to start. Zzen brings Roblox forward automatically.",246,105,738,22,14,muted);
  round(dc,246,142,738,184,mint,border);
  text(dc,L"Tycoon autopilot",268,158,660,28,20,ink,true);
  text(dc,L"One session. The complete cycle.",268,191,660,24,14,muted);
@@ -51,10 +51,10 @@ void drawButton(const DRAWITEMSTRUCT&d){
 HWND button(const wchar_t*name,int x,int y,int w,int h,int id){auto c=CreateWindowW(L"BUTTON",name,WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,ui::px(x),ui::px(y),ui::px(w),ui::px(h),mainWindow,(HMENU)INT_PTR(id),GetModuleHandleW(nullptr),nullptr);SendMessageW(c,WM_SETFONT,(WPARAM)font,TRUE);return c;}
 void refreshUi(){
  {std::lock_guard<std::mutex>lock(statusMutex);SetWindowTextW(statusLabel,statusText.c_str());}
- EnableWindow(startButton,!running&&hotkeyReady);EnableWindow(stopButton,running);EnableWindow(analyzeButton,!running&&hotkeyReady);
+ EnableWindow(startButton,!running&&!starting&&hotkeyReady);EnableWindow(stopButton,running||starting);EnableWindow(analyzeButton,!running&&!starting&&hotkeyReady);
  InvalidateRect(mainWindow,nullptr,FALSE);for(auto h:{startButton,stopButton,analyzeButton})InvalidateRect(h,nullptr,TRUE);
 }
-void quickGuide(){MessageBoxW(mainWindow,L"1. Open Roblox with the game interface in Spanish.\n2. Start session enables anti-AFK, upgrades and prestige together.\n3. Auto-promotion resets your base and game money when ready.\n4. Click Start session and switch to Roblox.\n5. Press F8 at any time to stop.\n\nTycoon: buys the game's suggested upgrade and checks promotion every 60 seconds.\nAnti-AFK: jumps every 5 minutes while the game toolbar is visible.\n\nZzen pauses when Roblox loses focus. Keep the PC awake and the game visible.\n\nIf something looks wrong: stop, use Run diagnostic, then switch to Roblox. Open logs contains the local diagnostic. Export log creates a text-only feedback file that you can attach to a chat.",L"Zzen · Quick guide",MB_OK|MB_ICONINFORMATION);}
+void quickGuide(){MessageBoxW(mainWindow,L"1. Open Roblox with the game interface in Spanish.\n2. Start session enables anti-AFK, upgrades and prestige together.\n3. Auto-promotion resets your base and game money when ready.\n4. Press F8 or click Start session. Zzen minimizes and activates Roblox.\n5. Press F8 again to stop; press once more to start again.\n\nTycoon: buys the game's suggested upgrade and checks promotion every 60 seconds.\nAnti-AFK: jumps every 5 minutes while the game toolbar is visible.\n\nZzen pauses when Roblox loses focus. Keep the PC awake and the game visible.\n\nIf something looks wrong: stop, use Run diagnostic, then switch to Roblox. Open logs contains the local diagnostic. Export log creates a text-only feedback file that you can attach to a chat.",L"Zzen · Quick guide",MB_OK|MB_ICONINFORMATION);}
 HWND overlayWindow=nullptr;
 LRESULT CALLBACK overlayProc(HWND h,UINT m,WPARAM w,LPARAM l){
  if(m==WM_NCHITTEST)return HTTRANSPARENT;
@@ -77,16 +77,16 @@ void refreshOverlay(){
 }
 LRESULT CALLBACK proc(HWND h,UINT m,WPARAM w,LPARAM l){
  switch(m){
- case WM_COMMAND:{int id=LOWORD(w);if(id==1)begin(false);else if(id==2)stop(L"Stopped by you.");else if(id==3)begin(true);else if(id==22)exportLog();else if(id==20)quickGuide();else if(id==21){ShellExecuteW(h,L"open",folder.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}return 0;}
- case WM_HOTKEY:stop(L"Stopped with F8.");return 0;
+ case WM_COMMAND:{int id=LOWORD(w);if(id==1)startSession();else if(id==2)stop(L"Stopped by you.");else if(id==3)begin(true);else if(id==22)exportLog();else if(id==20)quickGuide();else if(id==21){ShellExecuteW(h,L"open",folder.c_str(),nullptr,nullptr,SW_SHOWNORMAL);}return 0;}
+ case WM_HOTKEY:if(w==1)toggleSession();return 0;
  case WM_APP:refreshUi();refreshOverlay();return 0;
- case WM_TIMER:{RECT area{ui::px(246),ui::px(344),ui::px(984),ui::px(607)};InvalidateRect(h,&area,FALSE);refreshOverlay();return 0;}
+ case WM_TIMER:{if(w==2){checkStart();return 0;}RECT area{ui::px(246),ui::px(344),ui::px(984),ui::px(607)};InvalidateRect(h,&area,FALSE);refreshOverlay();return 0;}
  case WM_DRAWITEM:ui::drawButton(*reinterpret_cast<DRAWITEMSTRUCT*>(l));return TRUE;
  case WM_CTLCOLORSTATIC:SetBkColor((HDC)w,ui::white);SetTextColor((HDC)w,ui::ink);return (LRESULT)GetStockObject(WHITE_BRUSH);
  case WM_ERASEBKGND:return 1;
  case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(h,&ps);RECT r;GetClientRect(h,&r);HDC mem=CreateCompatibleDC(dc);auto bmp=CreateCompatibleBitmap(dc,r.right,r.bottom);auto old=SelectObject(mem,bmp);ui::paint(mem);BitBlt(dc,0,0,r.right,r.bottom,mem,0,0,SRCCOPY);SelectObject(mem,old);DeleteObject(bmp);DeleteDC(mem);EndPaint(h,&ps);return 0;}
  case WM_CLOSE:stop(L"Application closed.");exiting=true;DestroyWindow(h);return 0;
- case WM_DESTROY:KillTimer(h,1);if(overlayWindow)DestroyWindow(overlayWindow);overlayWindow=nullptr;UnregisterHotKey(h,1);PostQuitMessage(0);return 0;
+ case WM_DESTROY:KillTimer(h,1);KillTimer(h,2);if(overlayWindow)DestroyWindow(overlayWindow);overlayWindow=nullptr;UnregisterHotKey(h,1);PostQuitMessage(0);return 0;
  }return DefWindowProcW(h,m,w,l);
 }
 void initializeUi(HINSTANCE instance){
@@ -98,7 +98,7 @@ void initializeUi(HINSTANCE instance){
  SendMessageW(mainWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(mainWindow,WM_SETICON,ICON_SMALL,(LPARAM)LoadImageW(instance,MAKEINTRESOURCEW(101),IMAGE_ICON,16,16,LR_DEFAULTCOLOR));
  COLORREF caption=ui::navy,text=ui::white;DwmSetWindowAttribute(mainWindow,35,&caption,sizeof(caption));DwmSetWindowAttribute(mainWindow,36,&text,sizeof(text));
  font=ui::face(16);
- startButton=button(L"Start session",246,630,300,46,1);stopButton=button(L"Stop · F8",562,630,160,46,2);analyzeButton=button(L"Run diagnostic",738,630,246,46,3);
+ startButton=button(L"Start session · F8",246,630,300,46,1);stopButton=button(L"Stop · F8",562,630,160,46,2);analyzeButton=button(L"Run diagnostic",738,630,246,46,3);
  button(L"Quick guide",24,392,165,38,20);button(L"Open logs",24,434,165,38,21);button(L"Export log",24,476,165,38,22);
  statusLabel=CreateWindowW(L"STATIC",statusText.c_str(),WS_CHILD|WS_VISIBLE|SS_LEFT,ui::px(268),ui::px(397),ui::px(694),ui::px(49),mainWindow,nullptr,instance,nullptr);SendMessageW(statusLabel,WM_SETFONT,(WPARAM)font,TRUE);
  WNDCLASSW overlayClass{};overlayClass.hInstance=instance;overlayClass.lpszClassName=L"ZzenStatusOverlay";overlayClass.lpfnWndProc=overlayProc;RegisterClassW(&overlayClass);

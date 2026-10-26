@@ -46,3 +46,28 @@ This verifies the reported menu failure path and continuity for this interval;
 it is not a guarantee against all future UI changes or unrelated failures.
 Corrected executable SHA256:
 B55042B9435F288A68EB1D5812D63D11AE0B61B3473571B1615D703FFD7EF975
+
+F8 toggle update (26 October 2026, Europe/Madrid):
+F8 now starts or stops the unified session. F8 and Start session minimize Zzen
+and request Roblox activation once. Startup waits asynchronously for actual
+foreground activation (up to 1.5 seconds), and can be cancelled with F8/Stop.
+Normal running still pauses on focus loss and never repeatedly forces focus.
+Missing/ambiguous game windows prevent startup; activation failure leaves the
+session stopped. MOD_NOREPEAT prevents held F8 from repeatedly toggling.
+
+Live verification on the final binary:
+- 11:34:11: F8 from Zzen started the session and minimized the application.
+  Roblox became foreground; overlay and successful promotion-panel check seen.
+- 11:34:30: F8 from Roblox stopped the session and hid the overlay.
+- 11:34:47: F8 restarted with Zzen already minimized; promotion check completed.
+- 11:35:04: second stop succeeded.
+- 11:35:18: Start session button also minimized Zzen and activated Roblox.
+- 11:35:42: restoring Zzen paused game input without forcing Roblox forward.
+- Final F8 stopped the paused session. The application was left stopped.
+
+The first experimental build checked foreground synchronously and failed;
+that build was replaced before packaging. Final local suite: 125 passed,
+zero failures, zero skipped. Public suite: 101 passed; 19 private files skipped.
+This check covers startup/stop behavior, not a new full prestige cycle.
+Final F8 executable SHA256:
+A07A5137C1968AEE0520C21051A0F7DCCFDFEF67B9C3F216B474CAB365047542

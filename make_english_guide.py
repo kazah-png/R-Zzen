@@ -45,9 +45,9 @@ add('Quick start', 'sub')
 for title, body in [
     ('1. Open Zzen', 'Extract the complete package, close any older copy and launch <b>Zzen.exe</b>.'),
     ('2. Prepare the game', 'Join the tycoon and set the <b>game language to Spanish</b> using page 2. Keep the bottom toolbar visible and close chat and unrelated menus. The tested resolution is 1920 x 1080.'),
-    ('3. Start the session', 'Click <b>Start session</b>, return to Roblox and leave the controls untouched for at least two seconds. Keep Roblox in the foreground.'),
+    ('3. Start the session', 'Press <b>F8</b> or click <b>Start session</b>. Zzen minimizes and brings Roblox forward. Leave the controls untouched for two seconds.'),
     ('4. Follow the status', 'A small translucent strip at the top centre shows what Zzen is doing. It lets clicks pass through and disappears when the session stops or you switch applications.'),
-    ('5. Stop whenever needed', 'Press <b>F8</b> to stop all automation. You can also use Stop or close Zzen. Switching applications pauses game inputs; returning to Roblox may resume them.')]:
+    ('5. Stop whenever needed', 'Press <b>F8</b> to stop; press it again to start, even while Zzen is minimized. Stop or closing Zzen also ends the session. Switching apps pauses inputs until you return.')]:
     add(title, 'sub'); add(body)
 add('<b>Promotion resets the base and in-game money.</b> Starting a session includes automatic promotion. Stop Zzen before taking manual control or running another autoclicker.', 'small')
 
