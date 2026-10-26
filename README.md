@@ -6,6 +6,12 @@
 
 [Download v0.1](https://github.com/kazah-png/R-Zzen/releases/tag/v0.1) · [English user guide](output/pdf/Zzen-v0.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
 
+## License and independence
+
+R-Zzen is an **open-source project developed and shared without a profit-making purpose**, licensed under the [MIT License](LICENSE). This describes the project's intent, not registered nonprofit status. MIT also permits commercial use by others; this statement adds no restrictions to the license.
+
+R-Zzen is **not affiliated with, sponsored by, endorsed by, or an official product of Roblox Corporation** or the developers of Army Commander Tycoon. Third-party names, trademarks and game content belong to their respective owners. See [NOTICE.txt](NOTICE.txt).
+
 ## Getting started
 
 1. Download and extract `Zzen-0.1-Windows-x64.zip` from Releases.

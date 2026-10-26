@@ -1,5 +1,11 @@
 Zzen v0.1 - Windows x64 / Native C++17
 
+Open source under the MIT License. See LICENSE and NOTICE.txt.
+Developed and shared without a profit-making purpose. MIT still permits
+commercial use by others; this project statement adds no license restrictions.
+Not affiliated with, sponsored by, or endorsed by Roblox Corporation or the
+developers of Army Commander Tycoon.
+
 Run native/Zzen.exe (or Zzen.exe from the release folder).
 The previous zzen-antiafk.exe is a legacy C# build and is not this release.
 

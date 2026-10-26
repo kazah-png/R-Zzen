@@ -1,0 +1,19 @@
+R-Zzen / Zzen - Project notice
+
+R-Zzen is an independent, open-source project developed and shared without
+a profit-making purpose. This describes the project's intent; it does not
+claim registered nonprofit or charitable status.
+
+The software is licensed under the MIT License in LICENSE. The project's
+nonprofit purpose does not add a noncommercial restriction to that license.
+MIT permits commercial use, modification and redistribution, subject to its
+terms, including preservation of the copyright and permission notice.
+
+R-Zzen is not affiliated with, sponsored by, endorsed by, or an official
+product of Roblox Corporation or the developers of Army Commander Tycoon.
+Roblox and other third-party names, trademarks and game content belong to
+their respective owners. References identify the software's supported game
+and do not imply endorsement or grant rights to third-party assets.
+
+This notice describes project intent and affiliation. It does not modify or
+add conditions to the MIT License.
