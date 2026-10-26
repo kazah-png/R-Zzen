@@ -1,0 +1,4 @@
+Zzen icon
+Generated with the built-in image generation tool, then converted to Windows ICO sizes without changing the design.
+Files: Zzen.png (original raster), Zzen.ico (16, 24, 32, 48, 64, 128, 256 px).
+Prompt: Use case: logo-brand. Create a polished Windows application icon for an automation app named Zzen. One centered, bold geometric Z monogram, formed from a continuous angular ribbon, subtle electric mint-to-cyan color on a deep navy rounded-square tile. Minimal and precise, premium desktop productivity tool, flat vector-like clean edges, extremely legible at 24 pixels. Square composition, icon fills 88% of the canvas, transparent outside the rounded tile. No wordmark, no extra letters, no gaming controller, no gears, no mockup, no environment, no shadows outside the tile, no watermark. Output a single finished icon.

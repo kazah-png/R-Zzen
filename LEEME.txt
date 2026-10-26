@@ -1,0 +1,19 @@
+Zzen v0.1 - Windows x64 / Native C++17
+
+Run native/Zzen.exe (or Zzen.exe from the release folder).
+The previous zzen-antiafk.exe is a legacy C# build and is not this release.
+
+Start session enables the complete cycle: anti-AFK, building upgrades and automatic prestige.
+Use Roblox with the game UI in Spanish. Keep Roblox visible and in the foreground.
+F8 or Stop immediately stops automation. Switching apps pauses inputs.
+Prestige resets the base and in-game cash; Zzen checks the new promotion count before buying again.
+
+Export log creates feedback/Zzen-feedback-DATE-TIME.txt.
+Attach that text file to the chat for troubleshooting. No images are exported or uploaded.
+Run diagnostic captures a local screenshot and OCR report after switching to Roblox.
+Open logs opens the local app folder.
+
+Build: run build.ps1 using Visual Studio Build Tools (Desktop C++ and Windows SDK).
+Test: run test.ps1. C++ source: cpp/. Icon: assets/.
+English guide in the release package: Zzen-User-Guide.pdf. Source copy: output/pdf/Zzen-v0.1-User-Guide.pdf.
+A small translucent status strip appears at the top center of Roblox during a session. It does not take focus or intercept clicks.

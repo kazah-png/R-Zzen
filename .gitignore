@@ -1,0 +1,30 @@
+# Build outputs and packages (distributed through GitHub Releases)
+/native/
+/release/
+*.exe
+*.obj
+*.res
+*.pdb
+*.ilk
+*.zip
+
+# Local sessions, diagnostic images and private gameplay fixtures
+/fixtures/
+/diagnostico/
+/diagnostico-cpp/
+/feedback/
+/tmp/
+*.log
+promocion-pendiente*.txt
+RETOMAR.txt
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+.vs/
+.vscode/
+__pycache__/
+*.pyc
+Thumbs.db
+Desktop.ini

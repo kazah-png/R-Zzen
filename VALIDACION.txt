@@ -1,0 +1,36 @@
+Zzen v0.1 - Public validation report
+26 October 2026 | Native C++17 | Windows x64
+
+The complete local development suite passed 88 checks with zero failures.
+It includes private gameplay screenshot regressions. Those images are not
+published. Public builds run the available checks and report missing fixture
+images explicitly as skipped. Use tests.exe --require-fixtures to fail if any
+private fixture is unavailable.
+
+Live testing observed:
+- A real promotion from 11 to 12, with base reset.
+- Automatic verification of the increased count before resuming construction.
+- Oil platform 1 progressing from not built to level 1/3, then level 2/3.
+- Anti-AFK input within the unified construction session.
+- A stale More-button target cancelled after day/night toolbar movement.
+- F8 stopping input and hiding the overlay.
+- Export log producing a local text-only feedback file.
+
+Test conditions: Army Commander Tycoon, Spanish game UI with some English
+fallback labels, 1920x1080. Continuous construction runs included one of seven
+minutes and a final-build run of approximately three minutes and 47 seconds.
+
+The debugging session involved rebuilds and restarts. It does not establish a
+single uninterrupted end-to-end cycle with the final binary. The subsequent
+12-to-13 promotion and other layouts/resolutions have not been tested.
+
+When a purchase immediately closes the menu, Zzen does not count the closure
+alone as a verified upgrade. The UI counter may undercount successful purchases;
+visible building levels were checked for this validation. Session counters reset
+when a new session starts.
+
+The release includes the native application, README, this validation report,
+English PDF guide and an executable SHA256 checksum. Personal logs, private
+screenshots, local session notes and legacy C# builds are not distributed.
+
+Public source checkout: 65 checks passed, zero failures, 18 private fixture files explicitly skipped.
