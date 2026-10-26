@@ -52,6 +52,10 @@ int wmain(int argc,wchar_t**argv){
   check(b.next(c,13).action==Action::Wait&&b.next(c,15).action==Action::ConfirmPromotion,"cancelled input rechecks before retry");
   Bot recovered;recovered.recoverPending(11,20,true);check(recovered.next(c,21).action==Action::Stop,"restart preserves sent confirmation");
   auto result=promo();result.promotions=12;recovered.next(result,22);check(recovered.next(result,24).action==Action::Close&&recovered.promoted==1,"confirmed transaction still verifies counter");}
+ {Bot b;Scene menu;menu.hud=true;menu.moreOpen=true;menu.morePoint={517,1005};
+  b.next(hud(),0);for(int i=1;i<=3;i++)b.next(menu,i*2);
+  menu.more=true;menu.promoPoint={607,889};
+  check(b.next(menu,8).action==Action::OpenPromo,"regression: OCR retries cannot exhaust first promotion click");}
  Reader reader;
  if(fixtureAvailable(L"fixtures/native-after-rebirth-upgrade.bmp")){auto im=loadImage(L"fixtures/native-after-rebirth-upgrade.bmp");auto sc=analyze(im,reader.read(im));check(sc.build&&sc.available&&sc.level==1,"real UPGRADE and NIVELI recognition");}
  if(fixtureAvailable(L"fixtures/native-after-rebirth-build.bmp")){auto im=loadImage(L"fixtures/native-after-rebirth-build.bmp");auto sc=analyze(im,reader.read(im));check(sc.build&&sc.available&&sc.level==0,"real rebirth first BUILD purchase recognised");}
@@ -68,12 +72,39 @@ int wmain(int argc,wchar_t**argv){
  {Bot b;auto p=promo(true);p.cost=22e9;b.next(p,0);p.cost=24e9;check(b.next(p,2).action==Action::Wait,"changed price needs another read");check(b.next(p,4).action==Action::Promote,"stable price and count promote");}
  {Bot b;auto p=promo(true);b.next(p,0);b.focusLost();check(b.next(p,3).action==Action::Wait,"focus loss clears candidate");check(b.next(p,5).action==Action::Promote,"candidate confirmed after resume");}
  {Bot b;b.autoPromote=false;Scene s;s.build=true;s.available=true;s.name=L"oil";s.level=1;double t=0;Step step;for(int i=0;i<3;i++){b.next(s,t);b.next(s,t+3);b.next(s,t+5);step=b.next(s,t+7);if(i<2){b.next(hud(),t+10);t+=20;}}check(step.action==Action::Stop,"three unchanged purchases stop");}
- {Bot b;Scene menu;menu.hud=true;menu.moreOpen=true;menu.morePoint={517,1005};for(int i=0;i<4;i++)check(b.next(menu,i*3).action==Action::Wait,"unreadable open menu never toggles More");check(b.next(menu,15).action==Action::Stop,"unreadable menu stops");}
+ {Bot b;Scene menu;menu.hud=true;menu.moreOpen=true;menu.morePoint={517,1005};for(int i=0;i<4;i++)check(b.next(menu,i*3).action==Action::Wait,"unreadable open menu never toggles More");check(b.next(menu,30).action==Action::Stop,"unreadable menu stops after 30 seconds");}
  {Image blank{1920,1080,std::vector<Pixel>(1920*1080)};std::vector<Text> labels={{L"CONSTRUIR",{30,1050,60,14}},{L"EJERCITO",{130,1050,60,14}},{L"MAS",{510,1050,24,14}}};check(analyze(blank,labels).morePoint.x==0,"More label alone cannot authorize a click");}
  if(fixtureAvailable(L"fixtures/native-more-day.bmp")){auto im=loadImage(L"fixtures/native-more-day.bmp");auto sc=analyze(im,reader.read(im));check(sc.more&&sc.moreOpen&&sc.promoPoint.x>590&&sc.promoPoint.x<620,"real popup isolated label recognition");}
  {auto path=std::filesystem::path(L"native/feedback-test.txt");writeFeedback(path,"Status: test\n","one\ntwo\nthree\n");auto tail=logTail(path,10);check(tail.find("Earlier entries omitted")!=std::string::npos&&tail.find("three")!=std::string::npos,"feedback tail bounded and complete lines");auto full=logTail(path);check(full.find("Text only")!=std::string::npos&&full.find("Status: test")!=std::string::npos,"feedback report metadata");check(logTail(L"native/absent-log-test").find("No log")!=std::string::npos,"missing log export supported");}
  if(fixtureAvailable(L"fixtures/native-more-hover.bmp")){auto im=loadImage(L"fixtures/native-more-hover.bmp");auto dots=moreDots(im);check(dots&&abs(dots->x-609)<=3&&abs(dots->y-1005)<=3,"hover gradient preserves More dots");auto sc=analyze(im,reader.read(im));check(sc.hud&&!sc.moreOpen&&!sc.more,"More tooltip is not the popup");}
  if(fixtureAvailable(L"fixtures/native-more-night.bmp")){auto im=loadImage(L"fixtures/native-more-night.bmp");auto sc=analyze(im,reader.read(im));check(sc.more&&sc.moreOpen&&sc.promoPoint.x>680&&sc.promoPoint.x<715,"popup OCR typo requires verified popup and correct column");}
+ {Bot b;Scene menu;menu.moreOpen=true;menu.hud=true;menu.morePoint={517,1005};
+  b.next(hud(),0);for(int i=1;i<=12;i++)check(b.next(menu,i*2).action==Action::Wait,"many OCR readings do not count as clicks");
+  menu.more=true;menu.promoPoint={607,889};
+  for(int i=0;i<4;i++)check(b.next(menu,26+i*3).action==Action::OpenPromo,"promotion has independent four-click budget");
+  check(b.next(menu,39).action==Action::Stop,"four failed promotion clicks remain bounded");}
+ {Bot b;for(int i=0;i<4;i++)check(b.next(hud(),i*3).action==Action::OpenMore,"More has independent four-click budget");
+  check(b.next(hud(),12).action==Action::Stop,"four failed More clicks remain bounded");}
+ {Bot b;b.next(hud(),0);Scene unknown;
+  check(b.next(unknown,59).action==Action::Wait,"transient unknown navigation waits");
+  check(b.next(unknown,60).action==Action::Stop,"unrecognised navigation cannot loop forever");}
+ {Bot b;Scene menu;menu.moreOpen=true;menu.more=true;menu.promoPoint={607,889};bool ok=true;
+  for(int i=0;i<1000;i++){double n=i*75.;ok&=b.next(hud(),n).action==Action::OpenMore;
+   ok&=b.next(menu,n+3).action==Action::OpenPromo;ok&=b.next(promo(),n+6).action==Action::Close;
+   ok&=b.next(hud(),n+9).action==Action::Wait;}
+  check(ok,"1000 promotion checks reset navigation budgets after real progress");}
+ {Bot b;Scene menu;menu.moreOpen=true;menu.hud=true;menu.morePoint={517,1005};b.next(menu,0);b.focusLost();
+  check(b.next(menu,40).action==Action::Wait,"focus pause resets menu reading timeout");}
+ {Image popup{1920,1080,std::vector<Pixel>(1920*1080,Pixel{90,70,60,255})};
+  for(int cx:{496,517,538})for(int y=1001;y<=1009;y++)for(int x=cx-4;x<=cx+4;x++)popup.pixels[y*1920+x]={255,255,255,255};
+  std::vector<Text> labels={{L"CONSTRUIR",{30,1050,64,14}},{L"EJERCITO",{130,1050,60,14}},
+   {L"MAPA",{319,935,26,10}},{L"EQUIPAMIENTO",{390,935,69,12}},{L"",{572,935,71,10}}};
+  for(auto variant:{L"PRECONAR",L"PRECIONAR",L"PRO\"CIONAR",L"PRECKNAR"}){
+   labels.back().text=variant;auto sc=analyze(popup,labels);check(sc.moreOpen&&sc.more&&abs(sc.promoPoint.x-607)<3,"guarded OCR variants recognised in verified popup");
+   labels.back().box.x=400;check(!analyze(popup,labels).more,"OCR typo outside promotion column is rejected");labels.back().box.x=572;
+  }
+  labels.erase(labels.begin()+2,labels.begin()+4);check(!analyze(popup,labels).more,"OCR variants alone cannot authorize a popup click");}
+ if(fixtureAvailable(L"fixtures/native-more-stop-110808.bmp")){auto im=loadImage(L"fixtures/native-more-stop-110808.bmp");auto sc=analyze(im,reader.read(im));check(sc.moreOpen&&sc.more&&abs(sc.promoPoint.x-607)<8,"actual stopped menu is recognised");}
  std::cout<<checks<<" tests; "<<fail<<" failures; "<<skippedFixtures<<" private fixture files skipped\n";return fail?1:0;
  }catch(const winrt::hresult_error&e){std::cerr<<winrt::to_string(e.message())<<"\n";return 2;}catch(const std::exception&e){std::cerr<<e.what()<<"\n";return 2;}
 }

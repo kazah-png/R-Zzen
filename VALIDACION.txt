@@ -1,7 +1,7 @@
 Zzen v0.1 - Public validation report
 26 October 2026 | Native C++17 | Windows x64
 
-The complete local development suite passed 88 checks with zero failures.
+The complete local development suite passed 125 checks with zero failures.
 It includes private gameplay screenshot regressions. Those images are not
 published. Public builds run the available checks and report missing fixture
 images explicitly as skipped. Use tests.exe --require-fixtures to fail if any
@@ -33,4 +33,16 @@ The release includes the native application, README, this validation report,
 English PDF guide and an executable SHA256 checksum. Personal logs, private
 screenshots, local session notes and legacy C# builds are not distributed.
 
-Public source checkout: 65 checks passed, zero failures, 18 private fixture files explicitly skipped.
+Public source checkout: 101 checks passed, zero failures, 19 private fixture files explicitly skipped.
+
+Menu reliability correction: separated OCR reading time from More and Promotion click budgets. Fixed guarded recognition of PRECONAR, PRECIONAR and PROCIONAR. Added regression reproducing the old premature stop, 1,000-cycle simulation, timeout/click-limit tests and the actual saved failure screenshot. The regression failed before the fix and passes after it.
+
+Live check of the menu fix (26 October 2026, Europe/Madrid): session started
+at 11:15:29 and observed through 11:20:55 without error stops. Five promotion
+panels opened, their requirements were read, and each panel closed successfully.
+Both the night and day toolbar positions were exercised. Anti-AFK jump logged
+at 11:20:32. The session remained active after the observation.
+This verifies the reported menu failure path and continuity for this interval;
+it is not a guarantee against all future UI changes or unrelated failures.
+Corrected executable SHA256:
+B55042B9435F288A68EB1D5812D63D11AE0B61B3473571B1615D703FFD7EF975

@@ -105,7 +105,7 @@ inline Scene analyze(const Image&im,const std::vector<Text>&t){
   if(k==L"promocionar"&&l.box.y>im.h*.75&&l.box.y<im.h*.9&&l.box.x<im.w*.6){z.more=true;z.promoPoint={l.box.center().x,l.box.y-int(45*std::clamp(l.box.h/14.,.6,1.8))};}
  }
  if(anchor&&companionMask){if(auto p=moreDots(im)){z.morePoint=*p;int matches=0;for(auto word:{L"mapa",L"equipamiento",L"rivales",L"regiment"}){bool found=false;Rect row{std::max(0,p->x-250),p->y-90,500,48};for(auto&label:t)if(row.contains(label.box.center())&&norm(label.text)==word)found=true;if(found)matches++;}z.moreOpen=matches>=2;}}
- if(z.moreOpen&&!z.more){Rect labelArea{z.morePoint.x+45,z.morePoint.y-90,100,42};for(auto&label:t)if(labelArea.contains(label.box.center())){auto k=norm(label.text);k.erase(std::remove_if(k.begin(),k.end(),[](wchar_t c){return !iswalpha(c);}),k.end());if(k.size()>=8&&k.size()<=14&&(k.rfind(L"promo",0)==0||k==L"preconar"||k==L"precknar")&&k.substr(k.size()-3)==L"nar"){z.more=true;z.promoPoint={label.box.center().x,label.box.y-45};break;}}}
+ if(z.moreOpen&&!z.more){Rect labelArea{z.morePoint.x+45,z.morePoint.y-90,100,42};for(auto&label:t)if(labelArea.contains(label.box.center())){auto k=norm(label.text);k.erase(std::remove_if(k.begin(),k.end(),[](wchar_t c){return !iswalpha(c);}),k.end());if(k.size()>=7&&k.size()<=14&&(k.rfind(L"promo",0)==0||k==L"preconar"||k==L"precknar"||k==L"precionar"||k==L"procionar")&&k.substr(k.size()-3)==L"nar"){z.more=true;z.promoPoint={label.box.center().x,label.box.y-45};break;}}}
  z.hud=anchor&&(companionMask==3||companionMask==5||companionMask==6||companionMask==7||(companionMask&&z.morePoint.x>0))&&!z.partial;
  if(anchor){double s=std::clamp(anchor->box.w/64.,.6,1.8);z.notice=notice(im,{anchor->box.center().x+int(7*s),anchor->box.y-int(120*s),int(70*s),int(72*s)});}
  return z;
@@ -115,12 +115,14 @@ struct Step {Action action=Action::Wait;Point point{};std::wstring message;int d
 class Bot {
  enum class Phase {Watch,Opening,Buying,Closing,More,Promo,PromotionPending};
  Phase phase=Phase::Watch;int frames=0,retries=0,beforeLevel=-1,verifiedFrames=0,candidateCount=-1,unchangedBuys=0,lastFailedLevel=-1,confirmationFrames=0;std::wstring beforeName,lastFailedName;double candidateCost=-1,cooldown=0,nextPromo=0,pendingSince=0;int oldPromotions=-1;bool pending=false,confirmationSent=false;
+ int moreAttempts=0,promoAttempts=0;double menuReadSince=-1,navigationSince=-1;
+ void resetNavigation(){moreAttempts=promoAttempts=0;menuReadSince=navigationSince=-1;}
 public:
  bool autoPromote=true,saving=false;int purchases=0,promoted=0,confirmed=0;std::wstring target;
  bool promotionPending()const{return pending;}int expectedFrom()const{return oldPromotions;}
  bool confirmationAttempted()const{return confirmationSent;}
  void recoverPending(int count,double now,bool sent=false){pending=true;oldPromotions=count;pendingSince=now;confirmationSent=sent;phase=Phase::PromotionPending;}
- void focusLost(){frames=retries=verifiedFrames=confirmationFrames=0;candidateCount=-1;phase=pending?Phase::PromotionPending:Phase::Watch;}
+ void focusLost(){resetNavigation();frames=retries=verifiedFrames=confirmationFrames=0;candidateCount=-1;phase=pending?Phase::PromotionPending:Phase::Watch;}
  void acknowledge(const Step&s,bool sent){if(!sent){if(s.action==Action::ConfirmPromotion)confirmationSent=false;focusLost();return;}if(s.action==Action::ClickBuy)purchases++;}
  Step next(const Scene&s,double now){
   auto wait=[](std::wstring m){return Step{Action::Wait,{},m,1500};};
@@ -128,6 +130,7 @@ public:
   if(!s.promo){candidateCount=-1;verifiedFrames=0;}
   if(s.blocked)return {Action::Stop,{},L"Premium purchase or disconnection detected. Please check Roblox."};
   if(pending&&now-pendingSince>90)return {Action::Stop,{},L"Promotion could not be verified. Check the game before continuing."};
+  if(navigationSince>=0&&!s.promo&&!s.confirmation&&now-navigationSince>=60)return {Action::Stop,{},L"Promotion navigation timed out after 60 seconds. Check the More menu."};
   if(s.confirmation){
    if(!pending)return {Action::Stop,{},L"Unexpected promotion confirmation. No recorded attempt; please check the game."};
    if(confirmationSent)return {Action::Stop,{},L"Promotion confirmation remains open. The confirmation will not be repeated."};
@@ -136,6 +139,7 @@ public:
   }
   confirmationFrames=0;
   if(s.promo){
+   resetNavigation();
    if(pending){
     if(s.promotions==oldPromotions+1){if(++verifiedFrames<2)return wait(L"Promotion count increased. Confirming one more reading...");promoted++;pending=false;saving=false;nextPromo=now+90;cooldown=now+4;return close(L"Promotion verified. Resuming purchases.");}
     verifiedFrames=0;
@@ -149,8 +153,18 @@ public:
    return close(saving?L"Citadel complete. Saving for promotion; next check in 60 seconds.":L"Promotion is still locked. Continuing construction.");
   }
   if(s.partial)return wait(L"Waiting for a clear view of the open menu.");
-  if(s.more){phase=Phase::Promo;if(++retries>4)return {Action::Stop,{},L"The promotion panel did not open. Please check the More menu."};return {Action::OpenPromo,s.promoPoint,L"Opening the promotion panel...",3000};}
-  if(s.moreOpen){if(++retries>4)return {Action::Stop,{},L"More is open, but Prestige cannot be identified. Run a diagnostic."};return wait(L"Reading the Prestige button in the More menu...");}
+  if(s.more){
+   if(navigationSince<0)navigationSince=now;
+   menuReadSince=-1;phase=Phase::Promo;
+   if(++promoAttempts>4)return {Action::Stop,{},L"Promotion panel did not open after 4 clicks. Check the More menu."};
+   return {Action::OpenPromo,s.promoPoint,L"Opening the promotion panel...",3000};
+  }
+  if(s.moreOpen){
+   if(navigationSince<0)navigationSince=now;
+   if(menuReadSince<0)menuReadSince=now;
+   if(now-menuReadSince>=30)return {Action::Stop,{},L"Prestige could not be read for 30 seconds. Run a diagnostic."};
+   return wait(L"Reading the Prestige button in the More menu...");
+  }
   if(s.build){
    if(pending)return close(L"Closing construction to verify the promotion.");
    if(phase==Phase::Closing){if(++retries>3)return {Action::Stop,{},L"The panel did not close. Please check Roblox."};return {Action::Close,s.close,L"Trying the close button again...",3000};}
@@ -165,7 +179,7 @@ public:
   if(autoPromote&&(pending||now>=nextPromo)){
    if(s.morePoint.x<=0)return wait(L"Looking for the More button to check promotion.");
    if(pending&&now-pendingSince<8)return wait(L"Waiting for the base to reset...");
-   if(++retries>4)return {Action::Stop,{},L"Could not open More or Promotion. Please check Roblox."};phase=Phase::More;return {Action::OpenMore,s.morePoint,pending?L"Checking the promotion count...":L"Checking whether promotion is available...",3000};
+   if(navigationSince<0)navigationSince=now;if(++moreAttempts>4)return {Action::Stop,{},L"More menu did not open after 4 clicks. Please check Roblox."};phase=Phase::More;return {Action::OpenMore,s.morePoint,pending?L"Checking the promotion count...":L"Checking whether promotion is available...",3000};
   }
   if(saving)return wait(L"Saving for promotion. Checking every 60 seconds.");
   if(now<cooldown)return wait(L"Waiting for income before the next purchase.");

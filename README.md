@@ -4,7 +4,7 @@
 
 **Zzen v0.1** is a native C++ Windows desktop app for visual automation in Roblox **Army Commander Tycoon**. One session combines anti-AFK, construction purchases and automatic prestige, then resumes building after verifying the promotion count.
 
-[Download v0.1](https://github.com/kazah-png/R-Zzen/releases/tag/v0.1) · [English user guide](output/pdf/Zzen-v0.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
+[Download v0.1](https://github.com/kazah-png/R-Zzen/releases/tag/v0.1-menu-fix) · [English user guide](output/pdf/Zzen-v0.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
 
 ## License and independence
 
@@ -33,6 +33,10 @@ Starting a session includes automatic promotion, which resets your base and in-g
 
 The app uses visible screen capture, Windows OCR and normal keyboard/mouse input. It does not inject code into Roblox. It does not automate combat, premium purchases or reconnection.
 
+## Menu reliability fix (26 October 2026)
+
+Unclear OCR readings no longer consume the click budgets for More or Promotion. Recognition includes the observed PRECONAR/PRECIONAR variants only inside a verified popup and the expected button column. Reading can recover for up to 30 seconds; navigation remains bounded by independent click limits and a 60-second timeout.
+
 ## Feedback
 
 Stop with **F8**, click **Export log**, and share the generated `feedback/Zzen-feedback-*.txt` with a description of the problem. Review the text before posting it publicly. Nothing is uploaded automatically. Diagnostics and screenshots remain local and are separate from the text export.
@@ -55,7 +59,7 @@ The application is built as `native/Zzen.exe`. Packaging creates `release/Zzen-0
 python .\make_english_guide.py
 ```
 
-The public build passes **65 logic and synthetic-image checks**, with 18 private fixture files explicitly skipped. Private gameplay screenshots are not distributed, so their OCR regression checks are explicitly reported as skipped. A developer with the complete local fixture set can require those tests with:
+The public build passes **101 logic and synthetic-image checks**, with 19 private fixture files explicitly skipped. Private gameplay screenshots are not distributed, so their OCR regression checks are explicitly reported as skipped. A developer with the complete local fixture set can require those tests with:
 
 ```powershell
 .\native\tests.exe --require-fixtures
@@ -63,7 +67,7 @@ The public build passes **65 logic and synthetic-image checks**, with 18 private
 
 ## Validation and limits
 
-The original complete local suite passed **88 checks**. Live testing on 26 October 2026 observed promotion **11 → 12**, automatic counter verification, subsequent construction, and oil platform 1 reaching **level 2/3**. Testing involved debugging and restarts; a full uninterrupted cycle on the final binary and promotion 12 → 13 have not been verified.
+The complete local suite passes **125 checks**, including the saved failure screenshot and a simulation of 1,000 promotion-panel checks. Live testing on 26 October 2026 observed promotion **11 → 12**, automatic counter verification, subsequent construction, and oil platform 1 reaching **level 2/3**. Testing involved debugging and restarts; a full uninterrupted cycle on the final binary and promotion 12 → 13 have not been verified.
 
 The verified-upgrades counter can undercount purchases when the game closes the panel immediately. A closed panel alone is deliberately not treated as proof of an upgrade. UI counters restart with each session.
 

@@ -88,7 +88,7 @@ page(4, 'Troubleshooting and feedback')
 table([
     ('Nothing happens', 'Read the status. Check that the session is started, Roblox is in the foreground, the game is in Spanish and the bottom toolbar is visible. Leave the controls untouched for a few seconds.'),
     ('Saving for promotion', 'This is expected after the citadel is complete. Compare your balance with the promotion cost. Zzen intentionally pauses upgrade purchases while saving.'),
-    ('More is not found', 'Day and night layouts can move the toolbar. Keep the full toolbar visible. If Zzen cannot read the open menu, it stops after a limited number of attempts.'),
+    ('More is not found', 'Day and night layouts can move the toolbar. Keep the full toolbar visible. Unclear text can be read again for up to 30 seconds without using click attempts. Persistent failures still stop the session.'),
     ('A panel stays open', 'Press F8 and inspect the panel. Close it manually with its X, then return to a clear game view before starting again.'),
     ('Promotion is uncertain', 'Stop the session and check the promotion count manually. Keep promocion-pendiente.txt if present. On restart, Zzen uses it to verify the previous attempt before buying again.')])
 story.append(Spacer(1, 12))
@@ -98,7 +98,7 @@ add('The export contains version information, current status and recent events. 
 add('Optional diagnostic', 'sub')
 add('With automation stopped, click <b>Run diagnostic</b> and return to the problem screen during the five-second countdown. The diagnostic saves local evidence in <b>diagnostico-cpp</b>. Use Export log for the normal text-only feedback workflow.')
 add('Validation status', 'sub')
-add('The 88 automated checks cover promotion, confirmation, recovery, construction and real screenshot regressions. Live testing on 26 October 2026 observed promotion from 11 to 12, automatic counter verification and construction afterwards. Some game messages remain in English even with Spanish selected; these observed variants are supported. See <b>VALIDACION.txt</b> for evidence and test limits.', 'small')
+add('The 125 local automated checks cover promotion, confirmation, recovery, construction and real screenshot regressions. Live testing on 26 October 2026 observed promotion from 11 to 12, automatic counter verification and construction afterwards. Some game messages remain in English even with Spanish selected; these observed variants are supported. See <b>VALIDACION.txt</b> for evidence and test limits.', 'small')
 
 def frame(canvas, doc):
     canvas.setFillColor(teal); canvas.rect(44, 812, 507, 3, fill=1, stroke=0)
