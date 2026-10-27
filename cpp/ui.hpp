@@ -19,7 +19,7 @@ void paint(HDC dc){
  round(dc,16,150,178,45,RGB(26,44,62),RGB(26,44,62),9);dot(dc,34,173,4,RGB(58,223,188));text(dc,L"Overview",50,161,130,24,15,white,true);
  text(dc,L"CURRENT PROFILE",25,228,165,20,10,RGB(139,159,181),true);text(dc,L"Army Commander\nTycoon",25,258,165,58,18,white,true);text(dc,L"Roblox · Spanish game UI",25,322,160,38,12,RGB(159,179,199));
  round(dc,20,541,170,85,RGB(23,38,55),RGB(37,54,72),10);round(dc,34,556,35,26,RGB(43,60,79),RGB(43,60,79),5);text(dc,L"F8",34,559,35,20,12,white,true,DT_CENTER);text(dc,L"Start / stop",78,559,102,20,12,white,true);text(dc,L"Shows Roblox on start.",34,594,145,20,11,RGB(163,181,200));
- text(dc,L"v0.2  ·  Windows desktop",25,679,165,20,11,RGB(121,145,168));
+ text(dc,L"v0.2.1  ·  Windows desktop",25,679,165,20,11,RGB(121,145,168));
  text(dc,L"AUTOMATION",246,31,500,20,11,accent,true);text(dc,L"Your session, under control.",246,58,700,45,28,ink,true);text(dc,L"Press F8 to start. Zzen brings Roblox forward automatically.",246,105,738,22,14,muted);
  round(dc,246,142,738,184,mint,border);
  text(dc,L"Tycoon autopilot",268,158,660,28,20,ink,true);
@@ -54,7 +54,7 @@ void refreshUi(){
  EnableWindow(startButton,!running&&!starting&&hotkeyReady);EnableWindow(stopButton,running||starting);EnableWindow(analyzeButton,!running&&!starting&&hotkeyReady);
  InvalidateRect(mainWindow,nullptr,FALSE);for(auto h:{startButton,stopButton,analyzeButton})InvalidateRect(h,nullptr,TRUE);
 }
-void quickGuide(){MessageBoxW(mainWindow,L"1. Open Roblox with the game interface in Spanish.\n2. Start session enables anti-AFK, upgrades and prestige together.\n3. Auto-promotion resets your base and game money when ready.\n4. Press F8 or click Start session. Zzen minimizes and activates Roblox.\n5. Press F8 again to stop; press once more to start again.\n\nTycoon: buys the game's suggested upgrade and checks promotion every 60 seconds.\nAnti-AFK: jumps every 3 minutes while the game toolbar is visible.\n\nZzen pauses when Roblox loses focus. Keep the PC awake and the game visible.\n\nIf something looks wrong: stop, use Run diagnostic, then switch to Roblox. Open logs contains the local diagnostic. Export log creates a text-only feedback file that you can attach to a chat.",L"Zzen · Quick guide",MB_OK|MB_ICONINFORMATION);}
+void quickGuide(){MessageBoxW(mainWindow,L"1. Open Roblox with the game interface in Spanish.\n2. Start session enables anti-AFK, upgrades and prestige together.\n3. Auto-promotion resets your base and game money when ready.\n4. Press F8 or click Start session. Zzen minimizes and activates Roblox.\n5. Press F8 again to stop; press once more to start again.\n\nTycoon: buys suggested upgrades first. Checks prestige after 45 seconds without a purchase notice; if locked, waits at least 10 minutes. Once ready, checks savings every 60 seconds.\nAnti-AFK: jumps every 3 minutes while the game toolbar is visible.\n\nZzen pauses when Roblox loses focus. Keep the PC awake and the game visible.\n\nIf something looks wrong: stop, use Run diagnostic, then switch to Roblox. Open logs contains the local diagnostic. Export log creates a text-only feedback file that you can attach to a chat.",L"Zzen · Quick guide",MB_OK|MB_ICONINFORMATION);}
 HWND overlayWindow=nullptr;
 LRESULT CALLBACK overlayProc(HWND h,UINT m,WPARAM w,LPARAM l){
  if(m==WM_NCHITTEST)return HTTRANSPARENT;

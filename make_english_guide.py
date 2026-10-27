@@ -37,7 +37,7 @@ def page(number, title):
 add('VISUAL GAME AUTOMATION', 'sub')
 add('Zzen', 'title')
 add('User guide', 'head')
-add('v0.2 / Native C++ / Windows x64<br/>Roblox - Army Commander Tycoon', 'small')
+add('v0.2.1 / Native C++ / Windows x64<br/>Roblox - Army Commander Tycoon', 'small')
 story.append(Spacer(1, 12))
 add('One session. The complete cycle.', 'sub')
 add('Zzen keeps your character active, buys available upgrades and attempts promotion when the requirements are met. After confirming a promotion, it returns to buying upgrades. These features work together through one Start session button.')
@@ -70,10 +70,10 @@ add('References: <link href="https://en.help.roblox.com/hc/en-us/articles/402690
 
 page(3, 'How the session works')
 table([
-    ('Buy upgrades', 'Zzen detects the purchase notification, presses B and uses the selection chosen by the game. It requires a recognised upgrade action, price and yellow button.'),
+    ('Buy upgrades', 'Zzen detects the purchase notice, presses B and buys the game-selected upgrade. It refreshes quickly after each purchase and checks the current building, level, price and enabled button before clicking.'),
     ('Verify each upgrade', 'It looks for a level increase. A menu closing by itself is not counted as a verified upgrade. Zzen uses the X button when the panel remains open.'),
-    ('Check promotion', 'It locates the current three-dot icon, opens More and selects the promotion entry. It reads requirements, cost and promotion count. A grey button is not treated as available.'),
-    ('Save for promotion', 'When the citadel is recognised as complete, Zzen stops buying upgrades to save money. It checks promotion availability approximately once per minute.'),
+    ('Check promotion', 'Purchases take priority. After 45 seconds without a purchase notice, Zzen may inspect requirements. Locked prestige waits at least 10 minutes before another check. No notice alone never proves completion.'),
+    ('Save for promotion', 'Only after the game confirms the construction requirement is complete does Zzen save for prestige and check about once per minute. A grey button is never clicked.'),
     ('Attempt promotion', 'Zzen checks availability twice and saves the previous count. It then recognises the reset confirmation, checks it twice and confirms once. The pending record survives an app restart.'),
     ('Confirm and continue', 'It must read the previous count plus one twice. It then clears the pending record and returns to the purchase cycle.'),
     ('Needs attention', 'An uncertain promotion suspends purchases and promotion; it is never repeated blindly. Keep-active remains eligible only on a clear game view. Keep the pending record and export the log.')])
@@ -98,17 +98,17 @@ add('The export contains version, status, recent events, recovery counts and the
 add('Optional diagnostic', 'sub')
 add('With automation stopped, click <b>Run diagnostic</b> and return to the problem screen during the five-second countdown. The diagnostic saves local evidence in <b>diagnostico-cpp</b>. Use Export log for the normal text-only feedback workflow.')
 add('Validation status', 'sub')
-add('Version 0.2 adds regression checks for the real BUILD $700 recognition failure, changed click targets, cancellation and a four-hour simulated recovery run. This simulation is separate from live testing. See <b>VALIDACION.txt</b> for the final results, observed run length and limits.', 'small')
+add('Version 0.2.1 adds purchase-priority and pacing checks to the price-recognition, input-validation and recovery tests from v0.2. Simulated checks are separate from live testing. See <b>VALIDACION.txt</b> for the final results, observed run length and limits.', 'small')
 
 def frame(canvas, doc):
     canvas.setFillColor(teal); canvas.rect(44, 812, 507, 3, fill=1, stroke=0)
     canvas.setStrokeColor(colors.HexColor('#d9e2e7')); canvas.line(44, 40, 551, 40)
     canvas.setFont('Segoe', 8); canvas.setFillColor(muted)
-    canvas.drawString(44, 25, 'ZZEN v0.2 / USER GUIDE')
+    canvas.drawString(44, 25, 'ZZEN v0.2.1 / USER GUIDE')
     canvas.drawRightString(551, 25, f'{doc.page} / 4')
 
-destination = OUT / 'Zzen-v0.2-User-Guide.pdf'
+destination = OUT / 'Zzen-v0.2.1-User-Guide.pdf'
 doc = SimpleDocTemplate(str(destination), pagesize=(595, 842), leftMargin=44, rightMargin=44,
-                        topMargin=49, bottomMargin=54, title='Zzen v0.2 - User Guide', author='Zzen')
+                        topMargin=49, bottomMargin=54, title='Zzen v0.2.1 - User Guide', author='Zzen')
 doc.build(story, onFirstPage=frame, onLaterPages=frame)
 print(destination)

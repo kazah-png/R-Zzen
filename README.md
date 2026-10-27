@@ -2,9 +2,9 @@
 
 <img src="assets/Zzen.png" width="112" alt="Zzen icon">
 
-**Zzen v0.2** is a native C++ Windows desktop app for visual automation in Roblox **Army Commander Tycoon**. One session combines anti-AFK, construction purchases and automatic prestige, then resumes building after verifying the promotion count.
+**Zzen v0.2.1** is a native C++ Windows desktop app for visual automation in Roblox **Army Commander Tycoon**. One session combines anti-AFK, construction purchases and automatic prestige, then resumes building after verifying the promotion count.
 
-[Download v0.2](https://github.com/kazah-png/R-Zzen/releases/tag/v0.2) · [English user guide](output/pdf/Zzen-v0.2-User-Guide.pdf) · [Validation](VALIDACION.txt)
+[Download v0.2.1](https://github.com/kazah-png/R-Zzen/releases/tag/v0.2.1) · [English user guide](output/pdf/Zzen-v0.2.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
 
 ## License and independence
 
@@ -14,7 +14,7 @@ R-Zzen is **not affiliated with, sponsored by, endorsed by, or an official produ
 
 ## Getting started
 
-1. Download and extract `Zzen-0.2-Windows-x64.zip` from Releases.
+1. Download and extract `Zzen-0.2.1-Windows-x64.zip` from Releases.
 2. Open the tycoon and set the **game language to Spanish**. The guide explains how; Zzen's own interface is in English.
 3. Close older Zzen copies and launch `Zzen.exe`.
 4. Press **F8** or click **Start session**. Zzen minimizes and brings Roblox forward; keep its toolbar visible. The tested resolution is **1920 × 1080**.
@@ -32,6 +32,16 @@ Starting a session includes automatic promotion, which resets your base and in-g
 - Provides a click-through status overlay, **Export log** and an optional local diagnostic.
 
 The app uses visible screen capture, Windows OCR and normal keyboard/mouse input. It does not inject code into Roblox. It does not automate combat, premium purchases or reconnection.
+
+## Purchase priority in v0.2.1 (27 October 2026)
+
+- Construction runs first at startup and while purchase notifications continue. Scheduled prestige checks no longer interrupt the purchase loop.
+- After 45 seconds without a purchase notification, Zzen may inspect the promotion panel. If requirements are still locked, it waits at least ten minutes before another inspection and continues buying in the meantime.
+- A missing purchase notification is not evidence that every building is complete. The game must confirm its construction requirement before Zzen saves for prestige or attempts it. Once confirmed, saving checks remain about one minute apart.
+- Successful purchase cycles use shorter waits, including removal of the previous eight-second pause when the game closes the menu. Fresh target checks and uncertain-purchase backoff are retained.
+- A pending promotion is verified before buying resumes. Keep-active keeps its independent schedule.
+
+Actual timing depends on OCR, game response and available money. The measured live comparison is in [VALIDACION.txt](VALIDACION.txt).
 
 ## Reliability update in v0.2 (27 October 2026)
 
@@ -67,13 +77,13 @@ Requirements: Windows x64, Visual Studio Build Tools with **Desktop development 
 .\package.ps1
 ```
 
-The application is built as `native/Zzen.exe`. Packaging creates `release/Zzen-0.2-Windows-x64.zip`. The prebuilt English PDF is included in the repository; regenerating it requires Python, ReportLab and the Windows Segoe UI fonts:
+The application is built as `native/Zzen.exe`. Packaging creates `release/Zzen-0.2.1-Windows-x64.zip`. The prebuilt English PDF is included in the repository; regenerating it requires Python, ReportLab and the Windows Segoe UI fonts:
 
 ```powershell
 python .\make_english_guide.py
 ```
 
-The public build passes **121 logic and synthetic-image checks**, with 22 private fixture files explicitly skipped. Private gameplay screenshots are not distributed, so their OCR regression checks are explicitly reported as skipped. A developer with the complete local fixture set can require those tests with:
+The public build passes **132 logic and synthetic-image checks**, with 22 private fixture files explicitly skipped. Private gameplay screenshots are not distributed, so their OCR regression checks are explicitly reported as skipped. A developer with the complete local fixture set can require those tests with:
 
 ```powershell
 .\native\tests.exe --require-fixtures
@@ -81,13 +91,13 @@ The public build passes **121 logic and synthetic-image checks**, with 22 privat
 
 ## Validation and limits
 
-The complete local suite passes **151 checks**, including the actual stalled-price and hovered-button screenshots, 1,000 promotion-panel checks, and four virtual hours with 120 repeated menu failures. Simulation time is not live gameplay time. The final executable's live-test interval, purchase evidence, keep-active events and checksum are recorded in [VALIDACION.txt](VALIDACION.txt).
+The complete local suite passes **162 checks**, including the actual stalled-price and hovered-button screenshots, 1,000 promotion-panel checks, and four virtual hours with 120 repeated menu failures. Simulation time is not live gameplay time. The final executable's live-test interval, purchase evidence, keep-active events and checksum are recorded in [VALIDACION.txt](VALIDACION.txt).
 
 Historical evidence from v0.1 includes a visually observed promotion **11 → 12** and the overnight log's verified **12 → 13**, followed by purchases. Those earlier results are not presented as a new full prestige cycle on v0.2. Promotion **13 → 14** has not been verified on v0.2.
 
 The verified-upgrades counter can undercount purchases when the game closes the panel immediately. A closed panel alone is deliberately not treated as proof of an upgrade. UI counters restart with each session.
 
-Version 0.2 targets the observed game layout and Spanish UI, including some observed English fallback text. Other resolutions and future game changes may need adjustments. This is an independent project, not affiliated with Roblox or the experience's developers.
+Version 0.2.1 targets the observed game layout and Spanish UI, including some observed English fallback text. Other resolutions and future game changes may need adjustments. This is an independent project, not affiliated with Roblox or the experience's developers.
 
 ## Source layout
 

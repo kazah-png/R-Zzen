@@ -19,7 +19,7 @@ int wmain(int argc,wchar_t**argv){
  try{
  requireFixtures=argc>1&&std::wstring(argv[1])==L"--require-fixtures"; if(argc>1&&!requireFixtures){Reader reader;auto im=loadImage(argv[1]);auto text=reader.read(im);auto scene=analyze(im,text);auto output=report(scene,text);std::cout<<output;if(argc>2){std::ofstream out(argv[2]);out<<output;}return 0;}
  check(money(L"PROMOCIONAR · $22.0B")==22e9,"promotion cost");check(money(L"$17,303,980,458")==17303980458.,"balance");check(money(L"Mejora $36.0M")==36e6,"buy cost");check(!money(L"Necesita fortaleza"),"no price");
- {Bot b;check(b.next(hud(),0).action==Action::OpenMore,"initial promotion inspection");Scene m;m.more=true;check(b.next(m,3).action==Action::OpenPromo,"more -> promotion");check(b.next(promo(),6).action==Action::Close,"gray promotion not clicked");check(b.saving,"saves for ready citadel");b.next(hud(),9);check(b.next(hud(),12).action==Action::Wait,"does not spend savings");check(b.next(hud(),67).action==Action::OpenMore,"rechecks after minute");}
+ {Bot b;b.saving=true;check(b.next(hud(),0).action==Action::OpenMore,"known-ready promotion inspection");Scene m;m.more=true;check(b.next(m,3).action==Action::OpenPromo,"more -> promotion");check(b.next(promo(),6).action==Action::Close,"gray promotion not clicked");check(b.saving,"saves for ready citadel");b.next(hud(),9);check(b.next(hud(),12).action==Action::Wait,"does not spend savings");check(b.next(hud(),67).action==Action::OpenMore,"rechecks after minute");}
  {Bot b;auto p=promo(true);check(b.next(p,0).action==Action::Wait,"two reads before promotion");check(b.next(p,2).action==Action::Promote,"enabled promotes");check(b.promotionPending(),"pending persisted by runtime");check(b.next(p,5).action==Action::Wait,"no duplicate click");check(b.next(p,14).action==Action::Stop,"unchanged count stops");}
  {Bot b;auto p=promo(true);b.next(p,0);b.next(p,2);p.promotions=12;p.available=false;check(b.next(p,10).action==Action::Wait,"verification requires two reads");check(b.next(p,12).action==Action::Close,"increased count confirmed");check(!b.promotionPending()&&b.promoted==1&&!b.saving,"savings released");b.next(hud(),15);b.next(hud(),18);check(b.next(hud(),20).action==Action::OpenBuild,"buying resumes after promotion");Scene build;build.build=true;build.available=true;build.level=1;build.name=L"petroleo";check(b.next(build,23).action==Action::ClickBuy,"postpromotion purchase");build.level=2;check(b.next(build,26).action==Action::Close&&b.confirmed==1,"purchase level verified");}
  {Bot b;b.recoverPending(11,0);check(b.next(hud(),10).action==Action::OpenMore,"resume checks old transaction");auto p=promo(true);p.promotions=12;b.next(p,15);check(b.next(p,17).action==Action::Close,"recovered transaction confirmed");}
@@ -29,6 +29,34 @@ int wmain(int argc,wchar_t**argv){
  {Bot b;Scene s;s.blocked=true;check(b.next(s,0).action==Action::Stop,"premium blocked");}
  {Bot b;auto p=promo(true);b.next(p,0);b.next(p,2);b.focusLost();p.promotions=12;b.next(p,15);check(b.next(p,17).action==Action::Close,"focus loss preserves promotion");}
  {Bot b;auto p=promo();p.ready=false;b.next(p,0);check(!b.saving,"not ready continues building");}
+ {Bot b;check(b.next(hud(),0).action==Action::Wait,"startup validates purchase notice before input");
+  check(b.next(hud(),.5).action==Action::OpenBuild,"startup prioritises construction over prestige");}
+ {Bot b;auto quiet=hud();quiet.notice=false;
+  check(b.next(quiet,0).action==Action::Wait&&b.next(quiet,44).action==Action::Wait,"quiet HUD does not immediately imply completion");
+  Scene unknown;b.next(unknown,44.5);
+  check(b.next(quiet,45).action==Action::OpenMore,"transient OCR gap does not starve readiness inspection");
+  auto locked=promo();locked.ready=false;
+  check(b.next(locked,48).action==Action::Close&&!b.saving&&!b.promotionPending(),"incomplete buildings never enable prestige or saving");
+  b.next(quiet,51);b.next(quiet,100);
+  check(b.next(quiet,647).action==Action::Wait,"locked prestige stays deferred for ten minutes");
+  check(b.next(quiet,648).action==Action::OpenMore,"locked prestige can recheck after ten quiet minutes");}
+ {Bot b;auto quiet=hud();quiet.notice=false;b.next(quiet,0);b.next(hud(),40);
+  check(b.next(hud(),40.5).action==Action::OpenBuild,"purchase notice interrupts quiet-period observation");
+  b.focusLost();b.next(quiet,80);
+  check(b.next(quiet,124).action==Action::Wait&&b.next(quiet,125).action==Action::OpenMore,"focus pause requires fresh quiet-period observation");}
+ {Bot b;Scene build;build.build=true;build.available=true;build.name=L"oil";build.level=0;
+  double now=0;bool priority=true;int buys=0;
+  // Simulate 200 fully observed purchases, including both menu behaviours.
+  // Account for one second of OCR per observation and a second fresh read per click.
+  auto step=[&](Scene scene){auto result=b.next(scene,now);now+=1+result.delay/1000.;if(result.action!=Action::Wait)now+=1;priority&=result.action!=Action::OpenMore&&result.action!=Action::OpenPromo&&result.action!=Action::Stop;return result;};
+  for(int i=0;i<200;i++){
+   priority&=step(hud()).action==Action::Wait;priority&=step(hud()).action==Action::OpenBuild;
+   auto buy=step(build);priority&=buy.action==Action::ClickBuy;b.acknowledge(buy,true);buys++;
+   if(i%2==0){build.level++;priority&=step(build).action==Action::Close;priority&=step(hud()).action==Action::Wait;}
+   else{priority&=step(hud()).action==Action::Wait;build.level++;}
+  }
+  check(priority&&buys==200&&b.purchases==200,"200 continuous purchases never interrupt construction for prestige");
+  check(now/200<12,"verified purchase cycle stays under twelve seconds with simulated OCR cost");}
  Image gray{1920,1080,std::vector<Pixel>(1920*1080,Pixel{150,150,150,255})};
  std::vector<Text> text={{L"PROMOCIÓN",{622,282,120,25}},{L"Renacimiento: empezar de nuevo más fuerte",{615,320,500,20}},{L"Promociones hasta ahora: 11. Ciudadela de comandos construida.",{615,420,680,20}},{L"Ahorra $22.0B (tienes $17.4B), luego presiona PROMOCIONAR.",{615,444,680,20}},{L"PROMOCIONAR · $22.0B",{850,790,240,25}},{L"$17,400,000,000",{230,12,130,20}}};
  auto s=analyze(gray,text);check(s.promo&&s.promotions==11&&s.ready&&!s.available,"gray promotion image geometry");
@@ -64,7 +92,7 @@ int wmain(int argc,wchar_t**argv){
   check(b.next(menu,14).action==Action::OpenMore,"recovery closes only recognised More menu");
   check(b.next(hud(),18).action==Action::Wait&&!b.isRecovering(),"clear HUD ends recovery");
   b.next(hud(),22);check(b.next(hud(),24).action==Action::OpenBuild,"construction resumes after navigation recovery");
-  check(b.next(hud(),80).action==Action::OpenMore,"promotion check resumes after backoff");}
+  b.focusLost();b.saving=true;check(b.next(hud(),80).action==Action::OpenMore,"known-ready promotion check resumes after backoff");}
  {KeepAlive active(0);auto clean=hud();check(!active.ready(clean,179)&&active.ready(clean,180),"keep-active has an independent three-minute deadline");
   for(int kind=0;kind<6;kind++){auto menu=clean;if(kind==0)menu.moreOpen=true;if(kind==1)menu.partial=true;if(kind==2)menu.confirmation=true;if(kind==3)menu.blocked=true;if(kind==4)menu.build=true;if(kind==5)menu.promo=true;check(!active.ready(menu,300),"keep-active must not type into a menu or blocked view");}
   active.sent(180);check(!active.ready(clean,359)&&active.ready(clean,360),"successful keep-active resets its own deadline");}
@@ -116,12 +144,12 @@ int wmain(int argc,wchar_t**argv){
   menu.more=true;menu.promoPoint={607,889};
   for(int i=0;i<4;i++)check(b.next(menu,26+i*3).action==Action::OpenPromo,"promotion has independent four-click budget");
   check(b.next(menu,39).action==Action::Wait&&b.isRecovering(),"four failed promotion clicks enter recovery");}
- {Bot b;for(int i=0;i<4;i++)check(b.next(hud(),i*3).action==Action::OpenMore,"More has independent four-click budget");
+ {Bot b;b.saving=true;for(int i=0;i<4;i++)check(b.next(hud(),i*3).action==Action::OpenMore,"More has independent four-click budget");
   check(b.next(hud(),12).action==Action::Wait&&b.isRecovering(),"four failed More clicks enter recovery");}
- {Bot b;b.next(hud(),0);Scene unknown;
+ {Bot b;b.saving=true;b.next(hud(),0);Scene unknown;
   check(b.next(unknown,59).action==Action::Wait,"transient unknown navigation waits");
   check(b.next(unknown,60).action==Action::Wait&&b.isRecovering(),"unrecognised navigation enters visible recovery");}
- {Bot b;Scene menu;menu.moreOpen=true;menu.more=true;menu.promoPoint={607,889};bool ok=true;
+ {Bot b;b.saving=true;Scene menu;menu.moreOpen=true;menu.more=true;menu.promoPoint={607,889};bool ok=true;
   for(int i=0;i<1000;i++){double n=i*75.;ok&=b.next(hud(),n).action==Action::OpenMore;
    ok&=b.next(menu,n+3).action==Action::OpenPromo;ok&=b.next(promo(),n+6).action==Action::Close;
    ok&=b.next(hud(),n+9).action==Action::Wait;}

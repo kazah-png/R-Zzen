@@ -1,4 +1,4 @@
-Zzen v0.2 - Windows x64 / Native C++17
+Zzen v0.2.1 - Windows x64 / Native C++17
 
 Open source under the MIT License. See LICENSE and NOTICE.txt.
 Developed and shared without a profit-making purpose. MIT still permits
@@ -23,7 +23,7 @@ Open logs opens the local app folder.
 
 Build: run build.ps1 using Visual Studio Build Tools (Desktop C++ and Windows SDK).
 Test: run test.ps1. C++ source: cpp/. Icon: assets/.
-English guide in the release package: Zzen-User-Guide.pdf. Source copy: output/pdf/Zzen-v0.2-User-Guide.pdf.
+English guide in the release package: Zzen-User-Guide.pdf. Source copy: output/pdf/Zzen-v0.2.1-User-Guide.pdf.
 A small translucent status strip appears at the top center of Roblox during a session. It does not take focus or intercept clicks.
 
 Version 0.2 reliability changes:
@@ -40,3 +40,11 @@ Version 0.2 reliability changes:
 Use VALIDACION.txt for the actual test duration and known limits. The game must
 remain visible, unlocked and in the foreground. Zzen cannot farm while Roblox
 is disconnected, Windows is locked, or another app owns the foreground.
+Version 0.2.1 purchase priority:
+- Buy first; continuous purchase notices do not trigger prestige inspections.
+- A quiet purchase notice for 45 seconds permits checking requirements.
+- Locked prestige waits at least 10 minutes before another inspection.
+- No notice is not proof of completed construction. The game must confirm it.
+- Once construction readiness is confirmed, saving checks stay at 60 seconds.
+- Purchase transitions are faster; fresh target checks remain mandatory.
+- Pending promotions are verified before spending resumes.

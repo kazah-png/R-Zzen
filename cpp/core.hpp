@@ -142,7 +142,7 @@ class Bot {
  enum class Phase {Watch,Opening,Buying,Closing,More,Promo,PromotionPending};
  Phase phase=Phase::Watch;int frames=0,retries=0,beforeLevel=-1,verifiedFrames=0,candidateCount=-1,unchangedBuys=0,lastFailedLevel=-1,confirmationFrames=0;std::wstring beforeName,lastFailedName;double candidateCost=-1,cooldown=0,nextPromo=0,pendingSince=0;int oldPromotions=-1;bool pending=false,confirmationSent=false;
  int moreAttempts=0,promoAttempts=0;double menuReadSince=-1,navigationSince=-1;
- bool recovering=false;double recoveryNext=0,unknownSince=-1;int recoveryClicks=0;
+ bool recovering=false;double recoveryNext=0,unknownSince=-1,noPurchaseSince=-1;int recoveryClicks=0;
  std::wstring recoveryReason;
  Step recover(double now,const std::wstring&reason){
   if(pending)return {Action::Stop,{},reason+L" A promotion is pending; check its count."};
@@ -157,12 +157,16 @@ public:
  bool promotionPending()const{return pending;}int expectedFrom()const{return oldPromotions;}
  bool confirmationAttempted()const{return confirmationSent;}
  void recoverPending(int count,double now,bool sent=false){pending=true;oldPromotions=count;pendingSince=now;confirmationSent=sent;phase=Phase::PromotionPending;}
- void focusLost(){resetNavigation();unknownSince=-1;frames=retries=verifiedFrames=confirmationFrames=0;candidateCount=-1;phase=pending?Phase::PromotionPending:Phase::Watch;}
+ void focusLost(){resetNavigation();unknownSince=noPurchaseSince=-1;frames=retries=verifiedFrames=confirmationFrames=0;candidateCount=-1;phase=pending?Phase::PromotionPending:Phase::Watch;}
  void acknowledge(const Step&s,bool sent){if(!sent){if(s.action==Action::ConfirmPromotion)confirmationSent=false;focusLost();return;}if(s.action==Action::ClickBuy)purchases++;}
  Step next(const Scene&s,double now){
-  auto wait=[](std::wstring m){return Step{Action::Wait,{},m,1500};};
-  auto close=[&](std::wstring m){phase=Phase::Closing;retries=0;return Step{Action::Close,s.close,m,3000};};
+  auto wait=[](std::wstring m,int delay=500){return Step{Action::Wait,{},m,delay};};
+  auto close=[&](std::wstring m){phase=Phase::Closing;retries=0;return Step{Action::Close,s.close,m,s.build?800:3000};};
   if(!s.promo){candidateCount=-1;verifiedFrames=0;}
+  // No notification is only a reason to inspect readiness, never proof that
+  // every building is complete. The promotion panel remains authoritative.
+  if(clearHud(s)&&!s.notice){if(noPurchaseSince<0)noPurchaseSince=now;}
+  else if(s.notice||s.build||s.promo||s.moreOpen||s.partial||s.confirmation||s.blocked)noPurchaseSince=-1;
   if(s.build||s.promo||s.moreOpen||clearHud(s))unknownSince=-1;
   if(s.blocked)return {Action::Stop,{},L"Premium purchase or disconnection detected. Please check Roblox."};
   if(pending&&now-pendingSince>90)return {Action::Stop,{},L"Promotion could not be verified. Check the game before continuing."};
@@ -194,8 +198,8 @@ public:
    if(phase==Phase::Closing){if(++retries>3)return recover(now,L"The promotion panel did not close.");return {Action::Close,s.close,L"Trying to close the promotion panel...",3000};}
    if(!autoPromote){nextPromo=now+60;return close(L"Auto-promotion is off.");}
    if(s.available){double price=s.cost.value_or(-1);if(candidateCount!=s.promotions||candidateCost!=price){candidateCount=s.promotions;candidateCost=price;return wait(L"Promotion is available. Confirming another reading...");}oldPromotions=s.promotions;pending=true;confirmationSent=false;pendingSince=now;retries=0;phase=Phase::PromotionPending;return {Action::Promote,s.buy,L"Promoting now. Waiting to verify the new count.",8000};}
-   candidateCount=-1;frames=0;saving=s.ready;target=s.detail;nextPromo=now+60;
-   return close(saving?L"Citadel complete. Saving for promotion; next check in 60 seconds.":L"Promotion is still locked. Continuing construction.");
+   candidateCount=-1;frames=0;saving=s.ready;target=s.detail;nextPromo=now+(saving?60:600);
+   return close(saving?L"Citadel complete. Saving for promotion; next check in 60 seconds.":L"Promotion is locked. Prioritising construction; next check no sooner than 10 minutes.");
   }
   if(s.partial){if(unknownSince<0)unknownSince=now;if(now-unknownSince>=30)return recover(now,L"The menu could not be read.");return wait(L"Waiting for a clear view of the open menu.");}
   if(s.more){
@@ -212,26 +216,28 @@ public:
   }
   if(s.build){
    if(pending)return close(L"Closing construction to verify the promotion.");
-   if(phase==Phase::Closing){if(++retries>3)return recover(now,L"The construction panel did not close.");return {Action::Close,s.close,L"Trying the close button again...",3000};}
+   if(phase==Phase::Closing){if(++retries>3)return recover(now,L"The construction panel did not close.");return {Action::Close,s.close,L"Trying the close button again...",800};}
    if(phase==Phase::Buying){if(s.name==beforeName&&beforeLevel>=0&&s.level==beforeLevel+1){confirmed++;unchangedBuys=0;return close(L"Upgrade verified. Refreshing the selection.");}if(++frames<3)return wait(L"Checking the purchase result...");if(s.name==beforeName&&s.level==beforeLevel){if(lastFailedName==s.name&&lastFailedLevel==s.level)unchangedBuys++;else unchangedBuys=1;lastFailedName=s.name;lastFailedLevel=s.level;if(unchangedBuys>=3)return {Action::Stop,{},L"Three purchases without progress. Check the selected building."};}cooldown=now+8;return close(L"Purchase not confirmed. Refreshing the selection.");}
    if(saving)return close(L"Saving this money for promotion.");
    if(!s.available||now<cooldown){cooldown=now+8;return close(L"No purchase is available. Closing the menu and waiting.");}
-   beforeName=s.name;beforeLevel=s.level;frames=0;phase=Phase::Buying;return {Action::ClickBuy,s.buy,L"Buying: "+s.name,3000};
+   beforeName=s.name;beforeLevel=s.level;frames=0;phase=Phase::Buying;return {Action::ClickBuy,s.buy,L"Buying: "+s.name,900};
   }
   if(!s.hud){if(unknownSince<0)unknownSince=now;if(now-unknownSince>=60)return recover(now,L"Game view has been unreadable for 60 seconds.");return wait(pending?L"Waiting for a clear view to verify the promotion.":L"Waiting for the game toolbar or a supported menu.");}
   unknownSince=-1;
   if(phase==Phase::Closing){phase=pending?Phase::PromotionPending:Phase::Watch;retries=frames=0;return wait(L"Menu closed.");}
-  if(phase==Phase::Buying){phase=Phase::Watch;cooldown=now+8;return wait(L"The game closed the purchase menu.");}
-  if(autoPromote&&(pending||now>=nextPromo)){
+  if(phase==Phase::Buying){phase=Phase::Watch;cooldown=now+.6;return wait(L"The game closed the purchase menu.");}
+  bool navigationActive=phase==Phase::More||phase==Phase::Promo;
+  bool constructionQuiet=noPurchaseSince>=0&&now-noPurchaseSince>=45;
+  if(autoPromote&&(pending||navigationActive||(now>=nextPromo&&(saving||constructionQuiet)))){
    if(s.morePoint.x<=0)return wait(L"Looking for the More button to check promotion.");
    if(pending&&now-pendingSince<8)return wait(L"Waiting for the base to reset...");
    if(navigationSince<0)navigationSince=now;if(++moreAttempts>4)return recover(now,L"More menu did not open after 4 clicks.");phase=Phase::More;return {Action::OpenMore,s.morePoint,pending?L"Checking the promotion count...":L"Checking whether promotion is available...",3000};
   }
   if(saving)return wait(L"Saving for promotion. Checking every 60 seconds.");
   if(now<cooldown)return wait(L"Waiting for income before the next purchase.");
-  if(phase==Phase::Opening){if(++retries>3)return recover(now,L"Construction did not respond to B.");return {Action::OpenBuild,{},L"Trying B again...",3000};}
+  if(phase==Phase::Opening){if(++retries>3)return recover(now,L"Construction did not respond to B.");return {Action::OpenBuild,{},L"Trying B again...",700};}
   if(!s.notice){frames=0;return wait(L"Waiting for a purchase notification.");}
-  if(++frames<2)return wait(L"Purchase notification found. Confirming...");phase=Phase::Opening;retries=0;return {Action::OpenBuild,{},L"Opening construction with B...",3000};
+  if(++frames<2)return wait(L"Purchase notification found. Confirming...");phase=Phase::Opening;retries=0;return {Action::OpenBuild,{},L"Opening construction with B...",700};
  }
 };
 }

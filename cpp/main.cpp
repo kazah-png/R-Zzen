@@ -129,7 +129,7 @@ void loop(bool tycoon,bool promote,bool onlyDiagnostic,unsigned gen){
  }catch(const winrt::hresult_error&e){log(L"OCR/Windows detail: "+std::wstring(e.message()));stop(L"Windows text recognition failed. Use Open logs for details.");}catch(const std::exception&e){stop(L"Error: "+std::wstring(winrt::to_hstring(e.what())));}
  SetThreadExecutionState(ES_CONTINUOUS);running=false;workerDone=true;PostMessageW(mainWindow,WM_APP,0,0);
 }
-void begin(bool diag){if(running||!hotkeyReady)return;if(!workerDone){status(L"Finishing the previous session. Try again in a moment.");return;}if(worker.joinable())worker.join();{std::lock_guard<std::mutex>lock(statusMutex);sessionView={};sessionView.started=now();}workerDone=false;running=true;diagnostic=diag;unsigned gen=++generation;log(L"SESSION Zzen 0.2 | native x64 | unified autopilot | diagnostic="+std::to_wstring(diag));status(diag?L"Diagnostic in 5 seconds. Switch to Roblox.":L"Session started. Press F8 to stop.");worker=std::thread(loop,true,true,diag,gen);}
+void begin(bool diag){if(running||!hotkeyReady)return;if(!workerDone){status(L"Finishing the previous session. Try again in a moment.");return;}if(worker.joinable())worker.join();{std::lock_guard<std::mutex>lock(statusMutex);sessionView={};sessionView.started=now();}workerDone=false;running=true;diagnostic=diag;unsigned gen=++generation;log(L"SESSION Zzen 0.2.1 | native x64 | unified autopilot | diagnostic="+std::to_wstring(diag));status(diag?L"Diagnostic in 5 seconds. Switch to Roblox.":L"Session started. Press F8 to stop.");worker=std::thread(loop,true,true,diag,gen);}
 void checkStart(){
  if(!starting){KillTimer(mainWindow,2);return;}
  // Activation across UI threads is asynchronous. Observe it without stealing focus again.

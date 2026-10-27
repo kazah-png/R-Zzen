@@ -1,3 +1,66 @@
+Zzen v0.2.1 - Purchase-priority validation
+27 October 2026 | Europe/Madrid | Native C++17 | Windows x64
+
+CHANGE
+Construction takes priority at startup and while purchase notices continue.
+After 45 seconds without a notice, the app may inspect the promotion panel.
+A locked panel defers the next inspection for at least 600 seconds. Missing
+notices never prove construction completion; the game must confirm readiness.
+Known-ready saving checks retain their 60-second interval. Pending promotions
+are still verified before spending resumes. Purchase transitions are shorter;
+fresh target validation, uncertainty backoff and keep-active are retained.
+
+AUTOMATED CHECKS
+132 public checks passed; 22 private fixture files explicitly skipped.
+162 local checks passed with all private gameplay fixtures present.
+New tests include 200 uninterrupted purchase cycles with both automatic menu
+closure and visible level increases, delayed readiness checks, transient OCR
+gaps, ten-minute locked backoff and focus-pause reset. Existing pending-result,
+confirmation, recovery and keep-active checks continue to pass.
+
+LIVE PURCHASE MEASUREMENT
+Same PC, Army Commander Tycoon, Spanish UI, 1920x1080, Roblox foreground.
+Purchase-logic candidate: 05:49:28-05:52:53 (3 min 25 sec).
+- 17 purchase inputs; zero More or promotion-menu inputs.
+- Median interval between purchase inputs: 11.5 seconds; mean: 12.1 seconds.
+- Earlier v0.2 baseline: 23 inputs in 15 min 8 sec, median interval 29 seconds,
+  mean 36.5 seconds, with 11 promotion-panel openings during construction.
+- Median purchase interval was about 60% shorter (about 2.5 times the cadence).
+  This compares observed runs at different construction stages, not a
+  controlled benchmark or a guarantee for other hardware or game conditions.
+- One target-check cancellation recovered automatically; no suspended state
+  or OCR exception was logged. Keep-active ran at 05:52:30.
+- The ammunition-factory upgrade toast was visibly observed at 05:52:53.
+- F8 stopped the candidate deliberately. Only the built-in English quick-guide
+  text changed before the final executable was compiled; automation logic is
+  identical. The final quick-guide dialog was visually checked.
+
+FINAL EXECUTABLE
+SHA256: DC2ACBCA3B48D9103DCFB387EF4EF8FA50E11CAF8698B54A91ED755E81B82EA2
+Started with F8 at 05:53:26, minimized Zzen and brought Roblox forward.
+Bought the headquarters at 05:53:35. Purchase notices stopped at 05:53:50.
+The first readiness inspection began at 05:54:36, after the quiet interval.
+At 05:54:47 the game reported command citadel built, promotion count 13,
+required money $36.0B and available money about $164M. Zzen closed the grey
+promotion panel and entered saving; it did not click the unavailable action.
+Final-build observation interval: 05:53:26-05:56:43 (3 min 17 sec).
+Its second saving inspection completed at 05:55:59, and keep-active ran at
+05:56:27. No suspended state, input error or OCR exception was logged in this
+interval. Transient unreadable HUD readings recovered automatically. The final
+session was left running and saving after validation.
+
+LIMITS
+No new complete prestige cycle occurred during these tests. The 600-second
+locked backoff was validated in state-machine tests, not a ten-minute live
+locked-panel run. Absence of a notice is not an inventory scan: readiness is
+checked against the game's own panel. The live purchase measurement above is
+separate from simulated timing. The four-hour simulation described below is
+historical regression coverage, not four hours of unattended live operation.
+The English PDF has four pages; all were rendered and visually checked.
+Private logs/screenshots remain local; only the app and public docs are shipped.
+
+---- HISTORICAL v0.2 VALIDATION; DIFFERENT EXECUTABLE ----
+
 Zzen v0.2 - Validation report
 27 October 2026 | Europe/Madrid | Native C++17 | Windows x64
 
