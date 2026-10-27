@@ -1,73 +1,89 @@
-Zzen v0.1 - Public validation report
-26 October 2026 | Native C++17 | Windows x64
+Zzen v0.2 - Validation report
+27 October 2026 | Europe/Madrid | Native C++17 | Windows x64
 
-The complete local development suite passed 125 checks with zero failures.
-It includes private gameplay screenshot regressions. Those images are not
-published. Public builds run the available checks and report missing fixture
-images explicitly as skipped. Use tests.exe --require-fixtures to fail if any
-private fixture is unavailable.
+CAUSES REPRODUCED
+- The overnight v0.1 log showed promotion-menu navigation failures stopping
+  the entire session, including keep-active.
+- A saved screenshot showed an enabled BUILD $700 button on oil platform 5,
+  read as BUILD sno. Construction repeatedly reopened without buying.
+- Live testing also reproduced the game's hover font change making the
+  price unreadable during a fresh pre-click check.
 
-Live testing observed:
-- A real promotion from 11 to 12, with base reset.
-- Automatic verification of the increased count before resuming construction.
-- Oil platform 1 progressing from not built to level 1/3, then level 2/3.
-- Anti-AFK input within the unified construction session.
-- A stale More-button target cancelled after day/night toolbar movement.
-- F8 stopping input and hiding the overlay.
-- Export log producing a local text-only feedback file.
+CORRECTIONS
+- Additional targeted price reading; stable building-name/level recognition.
+- Before clicking, verify the same building, level and enabled cash button.
+  The initial price must be numeric. A readable changed price cancels input.
+- Bounded menu recovery replaces fatal stops for ordinary navigation failures.
+- Independent three-minute keep-active deadline, prioritized on a clear HUD.
+- Bounded, cancellable Windows OCR reads and nonblocking session restarts.
+- Retry transient read/input errors; show recovery/attention in the interface.
+- Active sessions request Windows system/display wakefulness.
+- Text-only feedback includes recovery/error counts and keep-active age.
 
-Test conditions: Army Commander Tycoon, Spanish game UI with some English
-fallback labels, 1920x1080. Continuous construction runs included one of seven
-minutes and a final-build run of approximately three minutes and 47 seconds.
+AUTOMATED CHECKS
+Final local suite: 151 passed, 0 failures, 0 private fixtures skipped.
+Public suite: 121 passed, 0 failures, 22 private fixture files skipped.
+The actual BUILD $700 regression failed before the correction and passes now.
+Coverage includes hover target validation, changed-price/target rejection,
+menu recovery, pending promotion preservation, confirmation guards, cancelled
+OCR, keep-active timing, and 1,000 promotion-panel checks.
+A separate simulation advances four virtual hours through 120 repeated menu
+failures while retaining keep-active scheduling. It is NOT four hours of
+live gameplay. Private fixture images are not included in the public repo.
 
-The debugging session involved rebuilds and restarts. It does not establish a
-single uninterrupted end-to-end cycle with the final binary. The subsequent
-12-to-13 promotion and other layouts/resolutions have not been tested.
+LIVE TEST CONDITIONS
+Army Commander Tycoon, Spanish UI with some English fallback labels,
+1920x1080, Roblox foreground. Test input used F8; no E/vehicle interaction.
 
-When a purchase immediately closes the menu, Zzen does not count the closure
-alone as a verified upgrade. The UI counter may undercount successful purchases;
-visible building levels were checked for this validation. Session counters reset
-when a new session starts.
+An intermediate candidate run (05:03:34-05:09:13) bought platforms 5, 6, 7
+and 8 and upgraded platforms 1 and 3. Platform 5 had been the overnight
+blocker. An upgrade toast was visibly observed. Keep-active logged 05:07:10.
+Earlier debugging builds exercised recovery after repeated cancelled inputs.
+These runs involved rebuilds and are separate from the final-build interval.
 
-The release includes the native application, README, this validation report,
-English PDF guide and an executable SHA256 checksum. Personal logs, private
-screenshots, local session notes and legacy C# builds are not distributed.
+Final executable SHA256:
+D8ED7FF087F135C228E14B6E5639A51241F2C4FF4D757190CB527BDC171B5917
+A second candidate ran 05:09:40-05:17:46 with purchases and keep-active.
+It exposed a promotion hover-font target shift. A real-fixture test failed
+before the fix and passes after anchoring the icon to the current toolbar.
+The platform 5 card was visually confirmed built (level 1/3), platform 4
+at level 2/3, and headquarters at level 3/5 during this candidate run.
+Final-build uninterrupted interval: 05:18:27-05:33:35 (15 min 8 sec by log).
+- 23 construction purchase inputs; no fatal stop or autopilot suspension.
+- The armor depot construction toast was visibly observed at about 05:25:04.
+- 11 successful promotion-panel close inputs; requirements remained locked.
+- Keep-active events: 05:21:41, 05:24:42, 05:27:49, 05:30:54.
+- Seven transient target-check cancellations were followed by fresh readings
+  and continued operation; no manual recovery was needed during this interval.
+- No Windows OCR exceptions were logged. Transient unrecognised text still
+  occurred and was retried; this is not a claim that every frame was readable.
+- Day and night toolbar positions were exercised. At 05:30:22 the night
+  promotion target opened correctly, followed by a heavy-garage purchase.
+- Windows reported the app responsive during the run (33.7 MiB working set,
+  285 handles, six threads at the process-health sample).
+- F8 stopped input and hid the overlay at 05:33:35. The app remained responsive.
+- Export log at 05:33:50 produced a text-only feedback file with 23 purchase
+  inputs, promotion count 13, zero OCR exceptions and keep-active age.
+- F8 restarted the same executable at 05:35:24, minimized Zzen and activated
+  Roblox. The updated local session was left running after testing.
 
-Public source checkout: 101 checks passed, zero failures, 19 private fixture files explicitly skipped.
+This interval is additional to the debugging/candidate runs above. It is not
+a four-hour unattended live soak, and no new full prestige cycle occurred.
 
-Menu reliability correction: separated OCR reading time from More and Promotion click budgets. Fixed guarded recognition of PRECONAR, PRECIONAR and PROCIONAR. Added regression reproducing the old premature stop, 1,000-cycle simulation, timeout/click-limit tests and the actual saved failure screenshot. The regression failed before the fix and passes after it.
+LIMITS AND HISTORICAL EVIDENCE
+- No finite test establishes perfect operation or guarantees against future
+  game changes, disconnections, Windows lock or loss of foreground focus.
+- This version does not reconnect Roblox or automate combat/premium purchases.
+- Uncertain promotion outcomes preserve the pending record and suspend
+  purchases; unknown screens do not authorize blind clicks or keep-active.
+- Keep-active is approximately every three minutes, deferred until clear HUD.
+- Historical v0.1 testing visually verified promotion 11 -> 12. Its overnight
+  log recorded 12 -> 13 at 00:29:34, followed by purchases. These are not new
+  full prestige cycles on v0.2; 13 -> 14 remains unverified on v0.2.
+- The verified-upgrades UI counter undercounts successful purchases when the
+  game closes the panel immediately. Closure alone is not counted as proof.
+  Live upgrade toasts/building levels provide separate visual evidence.
+- Session counters reset when a new session starts.
 
-Live check of the menu fix (26 October 2026, Europe/Madrid): session started
-at 11:15:29 and observed through 11:20:55 without error stops. Five promotion
-panels opened, their requirements were read, and each panel closed successfully.
-Both the night and day toolbar positions were exercised. Anti-AFK jump logged
-at 11:20:32. The session remained active after the observation.
-This verifies the reported menu failure path and continuity for this interval;
-it is not a guarantee against all future UI changes or unrelated failures.
-Corrected executable SHA256:
-B55042B9435F288A68EB1D5812D63D11AE0B61B3473571B1615D703FFD7EF975
-
-F8 toggle update (26 October 2026, Europe/Madrid):
-F8 now starts or stops the unified session. F8 and Start session minimize Zzen
-and request Roblox activation once. Startup waits asynchronously for actual
-foreground activation (up to 1.5 seconds), and can be cancelled with F8/Stop.
-Normal running still pauses on focus loss and never repeatedly forces focus.
-Missing/ambiguous game windows prevent startup; activation failure leaves the
-session stopped. MOD_NOREPEAT prevents held F8 from repeatedly toggling.
-
-Live verification on the final binary:
-- 11:34:11: F8 from Zzen started the session and minimized the application.
-  Roblox became foreground; overlay and successful promotion-panel check seen.
-- 11:34:30: F8 from Roblox stopped the session and hid the overlay.
-- 11:34:47: F8 restarted with Zzen already minimized; promotion check completed.
-- 11:35:04: second stop succeeded.
-- 11:35:18: Start session button also minimized Zzen and activated Roblox.
-- 11:35:42: restoring Zzen paused game input without forcing Roblox forward.
-- Final F8 stopped the paused session. The application was left stopped.
-
-The first experimental build checked foreground synchronously and failed;
-that build was replaced before packaging. Final local suite: 125 passed,
-zero failures, zero skipped. Public suite: 101 passed; 19 private files skipped.
-This check covers startup/stop behavior, not a new full prestige cycle.
-Final F8 executable SHA256:
-A07A5137C1968AEE0520C21051A0F7DCCFDFEF67B9C3F216B474CAB365047542
+Only the app, English guide, README, license, notice, validation and checksum
+are packaged. Personal logs, private screenshots and fixtures remain local.
