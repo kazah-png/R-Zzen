@@ -12,7 +12,7 @@ inline std::string logTail(const std::filesystem::path& path,size_t limit=2*1024
  if(offset){auto newline=text.find('\n');text=newline==std::string::npos?"":text.substr(newline+1);text="(Earlier entries omitted.)\n"+text;}return text;
 }
 inline void writeFeedback(const std::filesystem::path& path,const std::string& summary,const std::string& log){
- std::ofstream out(path,std::ios::binary|std::ios::trunc);out<<"Zzen 0.1 - Feedback log\nNative C++17 / Windows x64\nText only. No screenshots or attachments.\n\n"<<summary<<"\n--- Recent events ---\n"<<log;
+ std::ofstream out(path,std::ios::binary|std::ios::trunc);out<<"Zzen 0.2 - Feedback log\nNative C++17 / Windows x64\nText only. No screenshots or attachments.\n\n"<<summary<<"\n--- Recent events ---\n"<<log;
  out.flush();if(!out)throw std::runtime_error("Could not save the feedback log. Check folder access and free space.");
 }
 }

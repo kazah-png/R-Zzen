@@ -51,7 +51,7 @@ inline bool notice(const Image&im,Rect region){
  }return false;
 }
 struct Scene {
- bool build=false,promo=false,hud=false,partial=false,available=false,notice=false,blocked=false,ready=false,more=false,moreOpen=false,confirmation=false;
+ bool build=false,promo=false,hud=false,partial=false,available=false,buyEnabled=false,notice=false,blocked=false,ready=false,more=false,moreOpen=false,confirmation=false;
  Layout layout;Point buy{},close{},morePoint{},promoPoint{};
  std::wstring name,detail;int level=-1,promotions=-1;std::optional<double> balance,cost;
 };
@@ -95,42 +95,87 @@ inline Scene analyze(const Image&im,const std::vector<Text>&t){
  }
  if(auto b=buildLayout(t,im.w,im.h)){
   z.build=true;z.layout=*b;z.close=b->at(1301,33);auto r=b->area(925,685,380,80);z.buy=r.center();auto txt=within(t,r);
-  z.available=yellowRatio(im,b->area(936,692,360,62))>.55&&(hasPrice(txt)||std::regex_search(norm(txt),std::wregex(LR"(\b(?:build|upgrade)\s+[0-9][0-9.,]*\b)")))&&(has(txt,L"mejor")||has(txt,L"construir")||has(txt,L"comprar")||has(txt,L"build")||has(txt,L"upgrade"))&&!has(txt,L"necesita")&&!has(txt,L"requiere");
-  z.name=norm(within(t,b->area(920,330,390,47)));z.detail=txt;
+  z.buyEnabled=yellowRatio(im,b->area(936,692,360,62))>.55&&(has(txt,L"mejor")||has(txt,L"construir")||has(txt,L"comprar")||has(txt,L"build")||has(txt,L"upgrade"))&&!has(txt,L"necesita")&&!has(txt,L"requiere");
+  z.available=z.buyEnabled&&(hasPrice(txt)||std::regex_search(norm(txt),std::wregex(LR"(\b(?:build|upgrade)\s+[0-9][0-9.,]*\b)")));
+  for(auto&line:t)if(b->area(920,330,390,47).contains(line.box.center()))z.name=norm(line.text);
+  z.cost=money(txt);z.detail=txt;
   std::wsmatch m;auto lev=norm(within(t,b->area(920,378,390,32)));if(std::regex_search(lev,m,std::wregex(LR"((?:nivel|level)\s*([0-9il|]+)\s*/\s*\d+)"))){auto digits=m[1].str();for(auto&digit:digits)if(digit<L'0'||digit>L'9')digit=L'1';z.level=std::stoi(digits);}else if(has(lev,L"no construido")||has(lev,L"not built"))z.level=0;return z;
  }
  for(auto&l:t)if((has(l.text,L"construccion")||norm(l.text)==L"promocion")&&l.box.y<im.h*.65)z.partial=true;
  const Text*anchor=nullptr;int companionMask=0;
  for(auto&l:t){auto k=norm(l.text);if(l.box.y>im.h*.65&&l.box.x<im.w*.4){if((k==L"construir"||k==L"consiruir")&&l.box.x<im.w*.2)anchor=&l;if(k==L"ejercito")companionMask|=1;if(k==L"comando")companionMask|=2;if(k==L"tienda")companionMask|=4;}
-  if(k==L"promocionar"&&l.box.y>im.h*.75&&l.box.y<im.h*.9&&l.box.x<im.w*.6){z.more=true;z.promoPoint={l.box.center().x,l.box.y-int(45*std::clamp(l.box.h/14.,.6,1.8))};}
  }
  if(anchor&&companionMask){if(auto p=moreDots(im)){z.morePoint=*p;int matches=0;for(auto word:{L"mapa",L"equipamiento",L"rivales",L"regiment"}){bool found=false;Rect row{std::max(0,p->x-250),p->y-90,500,48};for(auto&label:t)if(row.contains(label.box.center())&&norm(label.text)==word)found=true;if(found)matches++;}z.moreOpen=matches>=2;}}
- if(z.moreOpen&&!z.more){Rect labelArea{z.morePoint.x+45,z.morePoint.y-90,100,42};for(auto&label:t)if(labelArea.contains(label.box.center())){auto k=norm(label.text);k.erase(std::remove_if(k.begin(),k.end(),[](wchar_t c){return !iswalpha(c);}),k.end());if(k.size()>=7&&k.size()<=14&&(k.rfind(L"promo",0)==0||k==L"preconar"||k==L"precknar"||k==L"precionar"||k==L"procionar")&&k.substr(k.size()-3)==L"nar"){z.more=true;z.promoPoint={label.box.center().x,label.box.y-45};break;}}}
+ // Hover changes label height. Anchor the icon to the current toolbar, not
+ // font geometry; still require the verified popup and its promotion column.
+ if(z.moreOpen){Rect labelArea{z.morePoint.x+45,z.morePoint.y-90,100,42};for(auto&label:t)if(labelArea.contains(label.box.center())){auto k=norm(label.text);k.erase(std::remove_if(k.begin(),k.end(),[](wchar_t c){return !iswalpha(c);}),k.end());if(k.size()>=7&&k.size()<=14&&(k.rfind(L"promo",0)==0||k==L"preconar"||k==L"precknar"||k==L"precionar"||k==L"procionar")&&k.substr(k.size()-3)==L"nar"){z.more=true;z.promoPoint={z.morePoint.x+90,z.morePoint.y-115};break;}}}
  z.hud=anchor&&(companionMask==3||companionMask==5||companionMask==6||companionMask==7||(companionMask&&z.morePoint.x>0))&&!z.partial;
  if(anchor){double s=std::clamp(anchor->box.w/64.,.6,1.8);z.notice=notice(im,{anchor->box.center().x+int(7*s),anchor->box.y-int(120*s),int(70*s),int(72*s)});}
  return z;
 }
 enum class Action {Wait,OpenBuild,ClickBuy,Close,OpenMore,OpenPromo,Promote,Stop,ConfirmPromotion};
 struct Step {Action action=Action::Wait;Point point{};std::wstring message;int delay=1500;};
+inline bool clearHud(const Scene&s){return s.hud&&!s.build&&!s.promo&&!s.partial&&!s.more&&!s.moreOpen&&!s.confirmation&&!s.blocked;}
+inline bool sameTarget(const Scene&before,const Scene&fresh,const Step&step){
+ if(fresh.blocked)return false;
+ auto nearby=[](Point a,Point b){return std::abs(a.x-b.x)<=8&&std::abs(a.y-b.y)<=8;};
+ switch(step.action){
+ case Action::OpenPromo:return fresh.more&&fresh.moreOpen&&nearby(fresh.promoPoint,step.point)&&nearby(before.morePoint,fresh.morePoint);
+ // Hover enlarges this game's font: $700 may become "sno". The original
+ // scene must have a numeric price; the fresh scene must still identify the
+ // same building, level and enabled cash button. A readable changed price vetoes.
+ case Action::ClickBuy:return before.available&&fresh.build&&fresh.buyEnabled&&nearby(fresh.buy,step.point)&&!before.name.empty()&&fresh.name==before.name&&fresh.level==before.level&&(!fresh.cost||!before.cost||fresh.cost==before.cost);
+ case Action::Promote:return fresh.promo&&fresh.available&&nearby(fresh.buy,step.point)&&fresh.promotions==before.promotions&&fresh.cost==before.cost;
+ case Action::Close:return fresh.build==before.build&&fresh.promo==before.promo&&(fresh.build||fresh.promo)&&!fresh.confirmation&&nearby(fresh.close,step.point);
+ case Action::ConfirmPromotion:return fresh.confirmation&&nearby(fresh.buy,step.point);
+ default:return false;
+ }
+}
+class KeepAlive {
+ double due=0;
+public:
+ explicit KeepAlive(double now):due(now+180){}
+ bool ready(const Scene&s,double now)const{return now>=due&&clearHud(s);}
+ void sent(double now){due=now+180;}
+};
 class Bot {
  enum class Phase {Watch,Opening,Buying,Closing,More,Promo,PromotionPending};
  Phase phase=Phase::Watch;int frames=0,retries=0,beforeLevel=-1,verifiedFrames=0,candidateCount=-1,unchangedBuys=0,lastFailedLevel=-1,confirmationFrames=0;std::wstring beforeName,lastFailedName;double candidateCost=-1,cooldown=0,nextPromo=0,pendingSince=0;int oldPromotions=-1;bool pending=false,confirmationSent=false;
  int moreAttempts=0,promoAttempts=0;double menuReadSince=-1,navigationSince=-1;
+ bool recovering=false;double recoveryNext=0,unknownSince=-1;int recoveryClicks=0;
+ std::wstring recoveryReason;
+ Step recover(double now,const std::wstring&reason){
+  if(pending)return {Action::Stop,{},reason+L" A promotion is pending; check its count."};
+  resetNavigation();recovering=true;recoveryNext=now;recoveryClicks=0;recoveryReason=reason;recoveries++;
+  return {Action::Wait,{},L"Recovering: "+reason,1500};
+ }
  void resetNavigation(){moreAttempts=promoAttempts=0;menuReadSince=navigationSince=-1;}
 public:
- bool autoPromote=true,saving=false;int purchases=0,promoted=0,confirmed=0;std::wstring target;
+ bool autoPromote=true,saving=false;int purchases=0,promoted=0,confirmed=0,recoveries=0;std::wstring target;
+ bool isRecovering()const{return recovering;}
+ void retryNavigation(double now){if(!pending)recover(now,L"Input target changed. Rechecking the menu.");}
  bool promotionPending()const{return pending;}int expectedFrom()const{return oldPromotions;}
  bool confirmationAttempted()const{return confirmationSent;}
  void recoverPending(int count,double now,bool sent=false){pending=true;oldPromotions=count;pendingSince=now;confirmationSent=sent;phase=Phase::PromotionPending;}
- void focusLost(){resetNavigation();frames=retries=verifiedFrames=confirmationFrames=0;candidateCount=-1;phase=pending?Phase::PromotionPending:Phase::Watch;}
+ void focusLost(){resetNavigation();unknownSince=-1;frames=retries=verifiedFrames=confirmationFrames=0;candidateCount=-1;phase=pending?Phase::PromotionPending:Phase::Watch;}
  void acknowledge(const Step&s,bool sent){if(!sent){if(s.action==Action::ConfirmPromotion)confirmationSent=false;focusLost();return;}if(s.action==Action::ClickBuy)purchases++;}
  Step next(const Scene&s,double now){
   auto wait=[](std::wstring m){return Step{Action::Wait,{},m,1500};};
   auto close=[&](std::wstring m){phase=Phase::Closing;retries=0;return Step{Action::Close,s.close,m,3000};};
   if(!s.promo){candidateCount=-1;verifiedFrames=0;}
+  if(s.build||s.promo||s.moreOpen||clearHud(s))unknownSince=-1;
   if(s.blocked)return {Action::Stop,{},L"Premium purchase or disconnection detected. Please check Roblox."};
   if(pending&&now-pendingSince>90)return {Action::Stop,{},L"Promotion could not be verified. Check the game before continuing."};
-  if(navigationSince>=0&&!s.promo&&!s.confirmation&&now-navigationSince>=60)return {Action::Stop,{},L"Promotion navigation timed out after 60 seconds. Check the More menu."};
+  if(recovering){
+   if(clearHud(s)){recovering=false;phase=Phase::Watch;resetNavigation();unknownSince=-1;frames=retries=0;cooldown=now+3;nextPromo=now+60;return wait(L"Menu recovered. Resuming the session.");}
+   if(s.confirmation)return {Action::Stop,{},L"Unexpected confirmation during recovery. Check Roblox."};
+   if(now<recoveryNext)return wait(L"Recovering: "+recoveryReason);
+   recoveryNext=now+(++recoveryClicks<=3?5:60);
+   if(s.build||s.promo)return {Action::Close,s.close,L"Recovery: closing the recognised panel.",3000};
+   if(s.moreOpen&&s.morePoint.x>0)return {Action::OpenMore,s.morePoint,L"Recovery: closing the More menu.",3000};
+   return wait(L"Needs attention: no safe menu target. Rechecking automatically.");
+  }
+  if(navigationSince>=0&&!s.promo&&!s.confirmation&&now-navigationSince>=60)return recover(now,L"Promotion navigation timed out.");
   if(s.confirmation){
    if(!pending)return {Action::Stop,{},L"Unexpected promotion confirmation. No recorded attempt; please check the game."};
    if(confirmationSent)return {Action::Stop,{},L"Promotion confirmation remains open. The confirmation will not be repeated."};
@@ -146,44 +191,45 @@ public:
     if(now-pendingSince<10)return wait(L"Waiting for the promotion result...");
     return {Action::Stop,{},L"The promotion count did not increase. Check the game; the click will not be repeated."};
    }
-   if(phase==Phase::Closing){if(++retries>3)return {Action::Stop,{},L"The promotion panel did not close. Please check Roblox."};return {Action::Close,s.close,L"Trying to close the promotion panel...",3000};}
+   if(phase==Phase::Closing){if(++retries>3)return recover(now,L"The promotion panel did not close.");return {Action::Close,s.close,L"Trying to close the promotion panel...",3000};}
    if(!autoPromote){nextPromo=now+60;return close(L"Auto-promotion is off.");}
    if(s.available){double price=s.cost.value_or(-1);if(candidateCount!=s.promotions||candidateCost!=price){candidateCount=s.promotions;candidateCost=price;return wait(L"Promotion is available. Confirming another reading...");}oldPromotions=s.promotions;pending=true;confirmationSent=false;pendingSince=now;retries=0;phase=Phase::PromotionPending;return {Action::Promote,s.buy,L"Promoting now. Waiting to verify the new count.",8000};}
    candidateCount=-1;frames=0;saving=s.ready;target=s.detail;nextPromo=now+60;
    return close(saving?L"Citadel complete. Saving for promotion; next check in 60 seconds.":L"Promotion is still locked. Continuing construction.");
   }
-  if(s.partial)return wait(L"Waiting for a clear view of the open menu.");
+  if(s.partial){if(unknownSince<0)unknownSince=now;if(now-unknownSince>=30)return recover(now,L"The menu could not be read.");return wait(L"Waiting for a clear view of the open menu.");}
   if(s.more){
    if(navigationSince<0)navigationSince=now;
    menuReadSince=-1;phase=Phase::Promo;
-   if(++promoAttempts>4)return {Action::Stop,{},L"Promotion panel did not open after 4 clicks. Check the More menu."};
+   if(++promoAttempts>4)return recover(now,L"Promotion panel did not open after 4 clicks.");
    return {Action::OpenPromo,s.promoPoint,L"Opening the promotion panel...",3000};
   }
   if(s.moreOpen){
    if(navigationSince<0)navigationSince=now;
    if(menuReadSince<0)menuReadSince=now;
-   if(now-menuReadSince>=30)return {Action::Stop,{},L"Prestige could not be read for 30 seconds. Run a diagnostic."};
+   if(now-menuReadSince>=30)return recover(now,L"Prestige could not be read for 30 seconds.");
    return wait(L"Reading the Prestige button in the More menu...");
   }
   if(s.build){
    if(pending)return close(L"Closing construction to verify the promotion.");
-   if(phase==Phase::Closing){if(++retries>3)return {Action::Stop,{},L"The panel did not close. Please check Roblox."};return {Action::Close,s.close,L"Trying the close button again...",3000};}
+   if(phase==Phase::Closing){if(++retries>3)return recover(now,L"The construction panel did not close.");return {Action::Close,s.close,L"Trying the close button again...",3000};}
    if(phase==Phase::Buying){if(s.name==beforeName&&beforeLevel>=0&&s.level==beforeLevel+1){confirmed++;unchangedBuys=0;return close(L"Upgrade verified. Refreshing the selection.");}if(++frames<3)return wait(L"Checking the purchase result...");if(s.name==beforeName&&s.level==beforeLevel){if(lastFailedName==s.name&&lastFailedLevel==s.level)unchangedBuys++;else unchangedBuys=1;lastFailedName=s.name;lastFailedLevel=s.level;if(unchangedBuys>=3)return {Action::Stop,{},L"Three purchases without progress. Check the selected building."};}cooldown=now+8;return close(L"Purchase not confirmed. Refreshing the selection.");}
    if(saving)return close(L"Saving this money for promotion.");
    if(!s.available||now<cooldown){cooldown=now+8;return close(L"No purchase is available. Closing the menu and waiting.");}
    beforeName=s.name;beforeLevel=s.level;frames=0;phase=Phase::Buying;return {Action::ClickBuy,s.buy,L"Buying: "+s.name,3000};
   }
-  if(!s.hud)return wait(pending?L"Waiting for a clear view to verify the promotion.":L"Waiting for the game toolbar or a supported menu.");
+  if(!s.hud){if(unknownSince<0)unknownSince=now;if(now-unknownSince>=60)return recover(now,L"Game view has been unreadable for 60 seconds.");return wait(pending?L"Waiting for a clear view to verify the promotion.":L"Waiting for the game toolbar or a supported menu.");}
+  unknownSince=-1;
   if(phase==Phase::Closing){phase=pending?Phase::PromotionPending:Phase::Watch;retries=frames=0;return wait(L"Menu closed.");}
   if(phase==Phase::Buying){phase=Phase::Watch;cooldown=now+8;return wait(L"The game closed the purchase menu.");}
   if(autoPromote&&(pending||now>=nextPromo)){
    if(s.morePoint.x<=0)return wait(L"Looking for the More button to check promotion.");
    if(pending&&now-pendingSince<8)return wait(L"Waiting for the base to reset...");
-   if(navigationSince<0)navigationSince=now;if(++moreAttempts>4)return {Action::Stop,{},L"More menu did not open after 4 clicks. Please check Roblox."};phase=Phase::More;return {Action::OpenMore,s.morePoint,pending?L"Checking the promotion count...":L"Checking whether promotion is available...",3000};
+   if(navigationSince<0)navigationSince=now;if(++moreAttempts>4)return recover(now,L"More menu did not open after 4 clicks.");phase=Phase::More;return {Action::OpenMore,s.morePoint,pending?L"Checking the promotion count...":L"Checking whether promotion is available...",3000};
   }
   if(saving)return wait(L"Saving for promotion. Checking every 60 seconds.");
   if(now<cooldown)return wait(L"Waiting for income before the next purchase.");
-  if(phase==Phase::Opening){if(++retries>3)return {Action::Stop,{},L"Construction did not respond to B. Check that chat is closed."};return {Action::OpenBuild,{},L"Trying B again...",3000};}
+  if(phase==Phase::Opening){if(++retries>3)return recover(now,L"Construction did not respond to B.");return {Action::OpenBuild,{},L"Trying B again...",3000};}
   if(!s.notice){frames=0;return wait(L"Waiting for a purchase notification.");}
   if(++frames<2)return wait(L"Purchase notification found. Confirming...");phase=Phase::Opening;retries=0;return {Action::OpenBuild,{},L"Opening construction with B...",3000};
  }

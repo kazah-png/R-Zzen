@@ -13,6 +13,8 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <chrono>
+#include <functional>
 #include "core.hpp"
 namespace zzen {
 inline std::string utf8(const std::wstring&s){return winrt::to_string(s);}
@@ -26,7 +28,7 @@ inline void saveImage(const Image&im,const std::filesystem::path&p){
  BITMAPFILEHEADER f{};BITMAPINFOHEADER h{};h.biSize=sizeof(h);h.biWidth=im.w;h.biHeight=-im.h;h.biPlanes=1;h.biBitCount=32;f.bfType=0x4D42;f.bfOffBits=sizeof(f)+sizeof(h);f.bfSize=f.bfOffBits+DWORD(im.pixels.size()*4);
  std::ofstream out(p,std::ios::binary);out.write(reinterpret_cast<char*>(&f),sizeof(f));out.write(reinterpret_cast<char*>(&h),sizeof(h));out.write(reinterpret_cast<const char*>(im.pixels.data()),im.pixels.size()*4);
 }
-inline Image crop(const Image&im,Rect r,bool binary=false){
+inline Image crop(const Image&im,Rect r,int binary=0){
  r.x=std::max(0,r.x);r.y=std::max(0,r.y);r.w=std::min(r.w,im.w-r.x);r.h=std::min(r.h,im.h-r.y);if(r.w<1||r.h<1)return{};
  Image c{r.w*2,r.h*2,std::vector<Pixel>(size_t(r.w)*r.h*4)};bool yel=yellowRatio(im,r)>.45;
  static ULONG_PTR token=[](){Gdiplus::GdiplusStartupInput input;ULONG_PTR t;Gdiplus::GdiplusStartup(&t,&input,nullptr);return t;}();(void)token;
@@ -35,23 +37,34 @@ inline Image crop(const Image&im,Rect r,bool binary=false){
  {Gdiplus::Graphics g(&dest);g.DrawImage(&source,Gdiplus::Rect(0,0,c.w,c.h),r.x,r.y,r.w,r.h,Gdiplus::UnitPixel);}
  Gdiplus::BitmapData data;Gdiplus::Rect all(0,0,c.w,c.h);dest.LockBits(&all,Gdiplus::ImageLockModeRead,PixelFormat32bppARGB,&data);
  for(int y=0;y<c.h;y++)memcpy(c.pixels.data()+y*c.w,static_cast<BYTE*>(data.Scan0)+y*data.Stride,c.w*4);dest.UnlockBits(&data);
- if(binary)for(auto&p:c.pixels){bool ink=yel?(p.r<135&&p.g<135&&p.b<135):(p.r>180&&p.g>170);uint8_t v=ink?0:255;p={v,v,v,255};}return c;
+ if(binary)for(auto&p:c.pixels){bool ink=binary==2?((299*p.r+587*p.g+114*p.b)/1000<200):(yel?(p.r<135&&p.g<135&&p.b<135):(p.r>180&&p.g>170));uint8_t v=ink?0:255;p={v,v,v,255};}return c;
 }
 class Reader {
  winrt::Windows::Media::Ocr::OcrEngine engine{nullptr};
+ std::function<bool()> cancelled;
+ std::chrono::steady_clock::time_point deadline{};
 public:
- Reader(){engine=winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromUserProfileLanguages();if(!engine)throw std::runtime_error("Windows text recognition is not available.");}
+ Reader(std::function<bool()> cancel={}):cancelled(std::move(cancel)){engine=winrt::Windows::Media::Ocr::OcrEngine::TryCreateFromUserProfileLanguages();if(!engine)throw std::runtime_error("Windows text recognition is not available.");}
  std::vector<Text> raw(const Image&im){
   if(im.w<=0||im.h<=0)return{};
+  if((cancelled&&cancelled())||(deadline.time_since_epoch().count()&&std::chrono::steady_clock::now()>deadline))throw std::runtime_error("OCR read cancelled or exceeded its time budget.");
   using namespace winrt::Windows::Graphics::Imaging;SoftwareBitmap bm(BitmapPixelFormat::Bgra8,im.w,im.h,BitmapAlphaMode::Ignore);
   auto ptr=reinterpret_cast<const uint8_t*>(im.pixels.data());bm.CopyFromBuffer(winrt::Windows::Security::Cryptography::CryptographicBuffer::CreateFromByteArray(winrt::array_view<const uint8_t>(ptr,ptr+im.pixels.size()*4)));
-  auto result=engine.RecognizeAsync(bm).get();std::vector<Text> out;
+  auto operation=engine.RecognizeAsync(bm);auto started=std::chrono::steady_clock::now();
+  while(operation.Status()==winrt::Windows::Foundation::AsyncStatus::Started){
+   auto time=std::chrono::steady_clock::now();
+   if((cancelled&&cancelled())||time-started>std::chrono::seconds(8)||(deadline.time_since_epoch().count()&&time>deadline)){operation.Cancel();throw std::runtime_error("OCR interrupted or timed out; a fresh reading is required.");}
+   Sleep(25);
+  }
+  if(cancelled&&cancelled())throw std::runtime_error("OCR cancelled.");
+  auto result=operation.get();std::vector<Text> out;
   for(auto line:result.Lines()){double x=1e9,y=1e9,right=0,bottom=0;for(auto word:line.Words()){auto r=word.BoundingRect();x=std::min(x,double(r.X));y=std::min(y,double(r.Y));right=std::max(right,double(r.X+r.Width));bottom=std::max(bottom,double(r.Y+r.Height));}out.push_back({std::wstring(line.Text()),{int(x),int(y),int(right-x),int(bottom-y)}});}return out;
  }
- void addCrop(std::vector<Text>&out,const Image&im,Rect r,bool binary,bool replace=false){
+ void addCrop(std::vector<Text>&out,const Image&im,Rect r,int binary,bool replace=false){
   auto local=raw(crop(im,r,binary));for(auto&l:local){l.box={r.x+l.box.x/2,r.y+l.box.y/2,l.box.w/2,l.box.h/2};if(replace)out.erase(std::remove_if(out.begin(),out.end(),[&](auto&old){return r.contains(old.box.center())&&std::abs(old.box.center().y-l.box.center().y)<std::max(old.box.h,l.box.h)*.65;}),out.end());out.push_back(l);}
  }
  std::vector<Text> read(const Image&im){
+  deadline=std::chrono::steady_clock::now()+std::chrono::seconds(15);
   auto out=raw(im);
   if(im.w>=900&&im.h>=600){
    addCrop(out,im,{0,int(im.h*.92),int(im.w*.38),im.h-int(im.h*.92)},false);
@@ -68,7 +81,16 @@ public:
   }
   if(auto b=buildLayout(out,im.w,im.h)){
    addCrop(out,im,b->area(910,325,405,85),true,true);
+   addCrop(out,im,b->area(920,335,370,72),false);
    for(auto r:{b->area(1060,695,240,65),b->area(1138,700,150,60)}){addCrop(out,im,r,false);addCrop(out,im,r,true);}
+   // Thin price glyphs on yellow can become "sno" at the ordinary threshold.
+   // Try a tighter, lighter threshold, still requiring an actual numeric price.
+   if(!analyze(im,out).available){
+    auto candidates=out;auto button=b->area(925,685,380,80);
+    for(auto&line:candidates)if(button.contains(line.box.center())&&(has(line.text,L"build")||has(line.text,L"upgrade")||has(line.text,L"mejora")||has(line.text,L"construir"))){
+     addCrop(out,im,{line.box.x-19,line.box.y-12,line.box.w+37,line.box.h+24},2);break;
+    }
+   }
   }
   if(auto p=promoLayout(out,im.w,im.h)){
    addCrop(out,im,p->area(25,130,710,70),false,true);addCrop(out,im,p->area(302,505,210,48),false);addCrop(out,im,p->area(302,505,210,48),true);
@@ -77,7 +99,7 @@ public:
  }
 };
 inline std::string report(const Scene&s,const std::vector<Text>&lines){
- std::ostringstream o;o<<"build="<<s.build<<" promo="<<s.promo<<" hud="<<s.hud<<" partial="<<s.partial<<" more="<<s.more<<" notice="<<s.notice<<" available="<<s.available<<" ready="<<s.ready<<" promotions="<<s.promotions<<" balance="<<(s.balance?*s.balance:-1)<<" cost="<<(s.cost?*s.cost:-1)<<" layout="<<s.layout.x<<","<<s.layout.y<<","<<s.layout.s<<"\n";
+ std::ostringstream o;o<<"build="<<s.build<<" promo="<<s.promo<<" hud="<<s.hud<<" partial="<<s.partial<<" more="<<s.more<<" notice="<<s.notice<<" available="<<s.available<<" buyEnabled="<<s.buyEnabled<<" level="<<s.level<<" name="<<utf8(s.name)<<" ready="<<s.ready<<" promotions="<<s.promotions<<" balance="<<(s.balance?*s.balance:-1)<<" cost="<<(s.cost?*s.cost:-1)<<" layout="<<s.layout.x<<","<<s.layout.y<<","<<s.layout.s<<"\n";
  for(auto&t:lines)o<<t.box.x<<","<<t.box.y<<","<<t.box.w<<","<<t.box.h<<": "<<utf8(t.text)<<"\n";return o.str();
 }
 }

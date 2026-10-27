@@ -1,4 +1,4 @@
-Zzen v0.1 - Windows x64 / Native C++17
+Zzen v0.2 - Windows x64 / Native C++17
 
 Open source under the MIT License. See LICENSE and NOTICE.txt.
 Developed and shared without a profit-making purpose. MIT still permits
@@ -23,5 +23,20 @@ Open logs opens the local app folder.
 
 Build: run build.ps1 using Visual Studio Build Tools (Desktop C++ and Windows SDK).
 Test: run test.ps1. C++ source: cpp/. Icon: assets/.
-English guide in the release package: Zzen-User-Guide.pdf. Source copy: output/pdf/Zzen-v0.1-User-Guide.pdf.
+English guide in the release package: Zzen-User-Guide.pdf. Source copy: output/pdf/Zzen-v0.2-User-Guide.pdf.
 A small translucent status strip appears at the top center of Roblox during a session. It does not take focus or intercept clicks.
+
+Version 0.2 reliability changes:
+- Extra button reading fixes the observed BUILD $700 / BUILD sno failure.
+- Recognised menu failures recover automatically with bounded retries and pauses.
+- Keep-active has its own three-minute clock and priority on a clear game view.
+- Changed targets are cancelled and reread before clicking.
+- Windows OCR waits are bounded and cancellation responds to F8.
+- An active session requests that Windows keep the PC and display awake.
+- Uncertain transactions suspend purchases; they are never blindly repeated.
+  Keep-active can continue only when the game view is safe and recognised.
+- Export log includes recovery counts and last keep-active information.
+
+Use VALIDACION.txt for the actual test duration and known limits. The game must
+remain visible, unlocked and in the foreground. Zzen cannot farm while Roblox
+is disconnected, Windows is locked, or another app owns the foreground.

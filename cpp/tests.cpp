@@ -25,7 +25,7 @@ int wmain(int argc,wchar_t**argv){
  {Bot b;b.recoverPending(11,0);check(b.next(hud(),10).action==Action::OpenMore,"resume checks old transaction");auto p=promo(true);p.promotions=12;b.next(p,15);check(b.next(p,17).action==Action::Close,"recovered transaction confirmed");}
  {Bot b;b.recoverPending(11,0);check(b.next(hud(),91).action==Action::Stop,"unknown transaction timeout");}
  {Bot b;b.autoPromote=false;auto p=promo(true);check(b.next(p,0).action==Action::Close&&!b.promotionPending(),"option off");}
- {Bot b;auto p=promo();b.next(p,0);for(int i=1;i<=3;i++)check(b.next(p,i*3).action==Action::Close,"close retry");check(b.next(p,12).action==Action::Stop,"close retry cap");}
+ {Bot b;auto p=promo();b.next(p,0);for(int i=1;i<=3;i++)check(b.next(p,i*3).action==Action::Close,"close retry");check(b.next(p,12).action==Action::Wait&&b.isRecovering(),"close retry starts bounded recovery");}
  {Bot b;Scene s;s.blocked=true;check(b.next(s,0).action==Action::Stop,"premium blocked");}
  {Bot b;auto p=promo(true);b.next(p,0);b.next(p,2);b.focusLost();p.promotions=12;b.next(p,15);check(b.next(p,17).action==Action::Close,"focus loss preserves promotion");}
  {Bot b;auto p=promo();p.ready=false;b.next(p,0);check(!b.saving,"not ready continues building");}
@@ -57,6 +57,39 @@ int wmain(int argc,wchar_t**argv){
   menu.more=true;menu.promoPoint={607,889};
   check(b.next(menu,8).action==Action::OpenPromo,"regression: OCR retries cannot exhaust first promotion click");}
  Reader reader;
+ if(fixtureAvailable(L"fixtures/v02-promo-hover.bmp")){auto im=loadImage(L"fixtures/v02-promo-hover.bmp");auto fresh=analyze(im,reader.read(im));Scene before=fresh;before.promoPoint={607,888};Step step{Action::OpenPromo,before.promoPoint};check(sameTarget(before,fresh,step),"hover font height must not shift the promotion icon target");}
+ {Bot b;Scene menu;menu.moreOpen=true;menu.more=true;menu.morePoint={517,1005};menu.promoPoint={607,890};
+  for(int i=0;i<4;i++)b.next(menu,i*3);
+  check(b.next(menu,12).action==Action::Wait&&b.isRecovering(),"menu failure preserves a recoverable session");
+  check(b.next(menu,14).action==Action::OpenMore,"recovery closes only recognised More menu");
+  check(b.next(hud(),18).action==Action::Wait&&!b.isRecovering(),"clear HUD ends recovery");
+  b.next(hud(),22);check(b.next(hud(),24).action==Action::OpenBuild,"construction resumes after navigation recovery");
+  check(b.next(hud(),80).action==Action::OpenMore,"promotion check resumes after backoff");}
+ {KeepAlive active(0);auto clean=hud();check(!active.ready(clean,179)&&active.ready(clean,180),"keep-active has an independent three-minute deadline");
+  for(int kind=0;kind<6;kind++){auto menu=clean;if(kind==0)menu.moreOpen=true;if(kind==1)menu.partial=true;if(kind==2)menu.confirmation=true;if(kind==3)menu.blocked=true;if(kind==4)menu.build=true;if(kind==5)menu.promo=true;check(!active.ready(menu,300),"keep-active must not type into a menu or blocked view");}
+  active.sent(180);check(!active.ready(clean,359)&&active.ready(clean,360),"successful keep-active resets its own deadline");}
+ {Scene before;before.moreOpen=true;before.more=true;before.morePoint={609,1005};before.promoPoint={698,890};Step click{Action::OpenPromo,before.promoPoint};
+  check(sameTarget(before,before,click),"stable promotion popup target is valid");auto changed=before;changed.morePoint.x-=92;changed.promoPoint.x-=92;check(!sameTarget(before,changed,click),"day/night shift cancels promotion click before input");
+  changed=before;changed.moreOpen=false;check(!sameTarget(before,changed,click),"popup closing cancels stale promotion target");}
+ {Bot b;KeepAlive active(0);int jumps=0,cycles=0;bool safe=true;Scene menu;menu.more=true;menu.moreOpen=true;menu.morePoint={517,1005};menu.promoPoint={607,890};
+  // Four virtual hours, with a failed promotion-menu navigation every cycle.
+  for(int second=0;second<4*60*60;second+=120){
+   for(int k=0;k<5;k++)safe&=b.next(menu,second+k*3).action!=Action::Stop;
+   safe&=b.isRecovering();safe&=b.next(menu,second+16).action==Action::OpenMore;
+   b.next(hud(),second+20);cycles++;
+   for(int k=21;k<120;k++){if(active.ready(hud(),second+k)){active.sent(second+k);jumps++;}}
+  }
+  check(safe&&cycles==120&&b.recoveries==120,"four-hour simulation survives 120 repeated menu failures");
+  check(jumps>=70,"four-hour recovery simulation retains keep-active scheduling");}
+ {Reader cancelled([]{return true;});bool interrupted=false;try{cancelled.read(gray);}catch(const std::exception&){interrupted=true;}check(interrupted,"stopped session cancels OCR before waiting for Windows");}
+ if(fixtureAvailable(L"fixtures/v02-stuck-build.bmp")){auto im=loadImage(L"fixtures/v02-stuck-build.bmp");auto sc=analyze(im,reader.read(im));check(sc.build&&sc.available&&sc.level==0&&has(sc.name,L"petrolera 5"),"v02 regression: BUILD $700 must not stall for hours as BUILD sno");}
+ if(fixtureAvailable(L"fixtures/v02-hover-build.bmp")&&fixtureAvailable(L"fixtures/v02-stuck-build.bmp")){
+  auto im=loadImage(L"fixtures/v02-stuck-build.bmp"),hover=loadImage(L"fixtures/v02-hover-build.bmp");auto before=analyze(im,reader.read(im)),fresh=analyze(hover,reader.read(hover));Step step{Action::ClickBuy,before.buy};
+  check(sameTarget(before,fresh,step),"real hover font change preserves verified numeric-price purchase");
+  fresh.buyEnabled=false;check(!sameTarget(before,fresh,step),"disabled hover button cancels purchase");fresh.buyEnabled=true;
+  fresh.name=L"another building";check(!sameTarget(before,fresh,step),"changed selected building cancels purchase");fresh.name=before.name;
+  fresh.cost=12345;check(!sameTarget(before,fresh,step),"readable changed price cancels purchase");
+ }
  if(fixtureAvailable(L"fixtures/native-after-rebirth-upgrade.bmp")){auto im=loadImage(L"fixtures/native-after-rebirth-upgrade.bmp");auto sc=analyze(im,reader.read(im));check(sc.build&&sc.available&&sc.level==1,"real UPGRADE and NIVELI recognition");}
  if(fixtureAvailable(L"fixtures/native-after-rebirth-build.bmp")){auto im=loadImage(L"fixtures/native-after-rebirth-build.bmp");auto sc=analyze(im,reader.read(im));check(sc.build&&sc.available&&sc.level==0,"real rebirth first BUILD purchase recognised");}
  if(fixtureAvailable(L"fixtures/native-promo-count12.bmp")){auto im=loadImage(L"fixtures/native-promo-count12.bmp");auto sc=analyze(im,reader.read(im));check(sc.promo&&sc.promotions==12&&!sc.available,"real mixed-language promotion count 12");}
@@ -72,7 +105,7 @@ int wmain(int argc,wchar_t**argv){
  {Bot b;auto p=promo(true);p.cost=22e9;b.next(p,0);p.cost=24e9;check(b.next(p,2).action==Action::Wait,"changed price needs another read");check(b.next(p,4).action==Action::Promote,"stable price and count promote");}
  {Bot b;auto p=promo(true);b.next(p,0);b.focusLost();check(b.next(p,3).action==Action::Wait,"focus loss clears candidate");check(b.next(p,5).action==Action::Promote,"candidate confirmed after resume");}
  {Bot b;b.autoPromote=false;Scene s;s.build=true;s.available=true;s.name=L"oil";s.level=1;double t=0;Step step;for(int i=0;i<3;i++){b.next(s,t);b.next(s,t+3);b.next(s,t+5);step=b.next(s,t+7);if(i<2){b.next(hud(),t+10);t+=20;}}check(step.action==Action::Stop,"three unchanged purchases stop");}
- {Bot b;Scene menu;menu.hud=true;menu.moreOpen=true;menu.morePoint={517,1005};for(int i=0;i<4;i++)check(b.next(menu,i*3).action==Action::Wait,"unreadable open menu never toggles More");check(b.next(menu,30).action==Action::Stop,"unreadable menu stops after 30 seconds");}
+ {Bot b;Scene menu;menu.hud=true;menu.moreOpen=true;menu.morePoint={517,1005};for(int i=0;i<4;i++)check(b.next(menu,i*3).action==Action::Wait,"unreadable open menu never toggles More");check(b.next(menu,30).action==Action::Wait&&b.isRecovering(),"unreadable menu recovers after 30 seconds");}
  {Image blank{1920,1080,std::vector<Pixel>(1920*1080)};std::vector<Text> labels={{L"CONSTRUIR",{30,1050,60,14}},{L"EJERCITO",{130,1050,60,14}},{L"MAS",{510,1050,24,14}}};check(analyze(blank,labels).morePoint.x==0,"More label alone cannot authorize a click");}
  if(fixtureAvailable(L"fixtures/native-more-day.bmp")){auto im=loadImage(L"fixtures/native-more-day.bmp");auto sc=analyze(im,reader.read(im));check(sc.more&&sc.moreOpen&&sc.promoPoint.x>590&&sc.promoPoint.x<620,"real popup isolated label recognition");}
  {auto path=std::filesystem::path(L"native/feedback-test.txt");writeFeedback(path,"Status: test\n","one\ntwo\nthree\n");auto tail=logTail(path,10);check(tail.find("Earlier entries omitted")!=std::string::npos&&tail.find("three")!=std::string::npos,"feedback tail bounded and complete lines");auto full=logTail(path);check(full.find("Text only")!=std::string::npos&&full.find("Status: test")!=std::string::npos,"feedback report metadata");check(logTail(L"native/absent-log-test").find("No log")!=std::string::npos,"missing log export supported");}
@@ -82,12 +115,12 @@ int wmain(int argc,wchar_t**argv){
   b.next(hud(),0);for(int i=1;i<=12;i++)check(b.next(menu,i*2).action==Action::Wait,"many OCR readings do not count as clicks");
   menu.more=true;menu.promoPoint={607,889};
   for(int i=0;i<4;i++)check(b.next(menu,26+i*3).action==Action::OpenPromo,"promotion has independent four-click budget");
-  check(b.next(menu,39).action==Action::Stop,"four failed promotion clicks remain bounded");}
+  check(b.next(menu,39).action==Action::Wait&&b.isRecovering(),"four failed promotion clicks enter recovery");}
  {Bot b;for(int i=0;i<4;i++)check(b.next(hud(),i*3).action==Action::OpenMore,"More has independent four-click budget");
-  check(b.next(hud(),12).action==Action::Stop,"four failed More clicks remain bounded");}
+  check(b.next(hud(),12).action==Action::Wait&&b.isRecovering(),"four failed More clicks enter recovery");}
  {Bot b;b.next(hud(),0);Scene unknown;
   check(b.next(unknown,59).action==Action::Wait,"transient unknown navigation waits");
-  check(b.next(unknown,60).action==Action::Stop,"unrecognised navigation cannot loop forever");}
+  check(b.next(unknown,60).action==Action::Wait&&b.isRecovering(),"unrecognised navigation enters visible recovery");}
  {Bot b;Scene menu;menu.moreOpen=true;menu.more=true;menu.promoPoint={607,889};bool ok=true;
   for(int i=0;i<1000;i++){double n=i*75.;ok&=b.next(hud(),n).action==Action::OpenMore;
    ok&=b.next(menu,n+3).action==Action::OpenPromo;ok&=b.next(promo(),n+6).action==Action::Close;
@@ -103,6 +136,7 @@ int wmain(int argc,wchar_t**argv){
    labels.back().text=variant;auto sc=analyze(popup,labels);check(sc.moreOpen&&sc.more&&abs(sc.promoPoint.x-607)<3,"guarded OCR variants recognised in verified popup");
    labels.back().box.x=400;check(!analyze(popup,labels).more,"OCR typo outside promotion column is rejected");labels.back().box.x=572;
   }
+  labels.back().text=L"PROMOCIONAR";labels.back().box={572,934,71,10};auto shortText=analyze(popup,labels);labels.back().box.h=14;auto tallText=analyze(popup,labels);check(sameTarget(shortText,tallText,{Action::OpenPromo,shortText.promoPoint})&&shortText.promoPoint.y==890,"promotion icon position is independent of hover text height");
   labels.erase(labels.begin()+2,labels.begin()+4);check(!analyze(popup,labels).more,"OCR variants alone cannot authorize a popup click");}
  if(fixtureAvailable(L"fixtures/native-more-stop-110808.bmp")){auto im=loadImage(L"fixtures/native-more-stop-110808.bmp");auto sc=analyze(im,reader.read(im));check(sc.moreOpen&&sc.more&&abs(sc.promoPoint.x-607)<8,"actual stopped menu is recognised");}
  std::cout<<checks<<" tests; "<<fail<<" failures; "<<skippedFixtures<<" private fixture files skipped\n";return fail?1:0;
