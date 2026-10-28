@@ -4,7 +4,7 @@
 
 **Zzen v0.2.1** is a native C++ Windows desktop app for visual automation in Roblox **Army Commander Tycoon**. One session combines anti-AFK, construction purchases and automatic prestige, then resumes building after verifying the promotion count.
 
-[Download v0.2.1](https://github.com/kazah-png/R-Zzen/releases/tag/v0.2.1) · [English user guide](output/pdf/Zzen-v0.2.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
+[Download v0.2.1](https://github.com/zzen-automation/R-Zzen/releases/tag/v0.2.1) · [English user guide](output/pdf/Zzen-v0.2.1-User-Guide.pdf) · [Validation](VALIDACION.txt)
 
 ## License and independence
 
